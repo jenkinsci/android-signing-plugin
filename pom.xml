@@ -62,6 +62,10 @@
       <id>jcenter</id>
       <url>http://jcenter.bintray.com/</url>
     </repository>
+    <repository>
+      <id>maven.google.com</id>
+      <url>https://maven.google.com</url>
+    </repository>
   </repositories>
 
   <pluginRepositories>
@@ -86,7 +90,7 @@
     <dependency>
       <groupId>com.android.tools.build</groupId>
       <artifactId>apksig</artifactId>
-      <version>2.3.0</version>
+      <version>7.0.3</version>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins.workflow</groupId>

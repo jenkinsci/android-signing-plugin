@@ -34,7 +34,7 @@ This plugin also depends on Android's  [`apksig`](https://android.googlesource.c
 library to sign APKs programmatically. `apksig` backs the [`apksigner`](https://developer.android.com/studio/command-line/apksigner.html)
 utility in the Android SDK Developer Tools package.  Using `apksig` ensures the signed APKs
 this plugin produces comply with the newer
-[APK Signature Scheme v2](https://source.android.com/security/apksigning/v2.html).
+[APK Signature Scheme v2](https://source.android.com/security/apksigning/v2.html) and [APK Signature Scheme v3](https://source.android.com/security/apksigning/v3).
 Thanks to Google/Android for making that library available as a
 [Maven dependency](https://bintray.com/android/android-tools/com.android.tools.build.apksig).
 
