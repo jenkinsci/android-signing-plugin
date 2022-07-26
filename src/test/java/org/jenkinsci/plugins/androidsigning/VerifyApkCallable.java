@@ -28,6 +28,7 @@ class VerifyApkCallable extends MasterToSlaveFileCallable<VerifyApkCallable.Veri
         boolean isVerified;
         boolean isVerifiedV1Scheme;
         boolean isVerifiedV2Scheme;
+        boolean isVerifiedV3Scheme;
         boolean containsErrors;
         X509Certificate[] certs;
         String[] warnings = new String[0];
@@ -37,6 +38,7 @@ class VerifyApkCallable extends MasterToSlaveFileCallable<VerifyApkCallable.Veri
             this.isVerified = result.isVerified();
             this.isVerifiedV1Scheme = result.isVerifiedUsingV1Scheme();
             this.isVerifiedV2Scheme = result.isVerifiedUsingV2Scheme();
+            this.isVerifiedV3Scheme = result.isVerifiedUsingV3Scheme();
             this.certs = result.getSignerCertificates().toArray(new X509Certificate[0]);
             this.containsErrors = result.containsErrors();
             List<String> messages = new ArrayList<>();
