@@ -438,6 +438,7 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
             if (project == null) {
                 return FormValidation.warning(Messages.validation_noProject());
             }
+            project.checkPermission(Item.WORKSPACE);
             FilePath someWorkspace = project.getSomeWorkspace();
             if (someWorkspace == null) {
                 return FormValidation.warning(Messages.validation_noWorkspace());
