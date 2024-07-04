@@ -1,7 +1,5 @@
 package org.jenkinsci.plugins.androidsigning;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
-
 import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.DataBoundConstructor;
 
