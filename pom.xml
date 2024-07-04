@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>2.19</version>
+    <version>4.78</version>
     <relativePath />
   </parent>
 
@@ -23,17 +23,7 @@
   </licenses>
 
   <properties>
-    <!-- Baseline Jenkins version you use to build the plugin. Users must have this version or newer to run. -->
-    <jenkins.version>1.642.3</jenkins.version>
-    <!-- Java Level to use. Java 7 required when using core >= 1.612 -->
-    <java.level>8</java.level>
-    <!-- Jenkins Test Harness version you use to test the plugin. -->
-    <!-- For Jenkins version >= 1.580.1 use JTH 2.x or higher. -->
-    <jenkins-test-harness.version>2.13</jenkins-test-harness.version>
-    <!-- Other properties you may want to use:
-         ~ hpi-plugin.version: The HPI Maven Plugin version used by the plugin..
-         ~ stapler-plugin.version: The Stapler Maven plugin version required by the plugin.
-    -->
+    <jenkins.version>2.414.3</jenkins.version>
   </properties>
 
   <developers>
@@ -106,12 +96,6 @@
     </dependency>
 
     <!-- test dependencies -->
-    <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-core</artifactId>
-      <version>2.7.1</version>
-      <scope>test</scope>
-    </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins.workflow</groupId>
       <artifactId>workflow-basic-steps</artifactId>
