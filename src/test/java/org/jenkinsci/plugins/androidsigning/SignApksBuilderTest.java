@@ -3,11 +3,12 @@ package org.jenkinsci.plugins.androidsigning;
 import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardCertificateCredentials;
-import com.gargoylesoftware.htmlunit.html.HtmlForm;
-import com.gargoylesoftware.htmlunit.html.HtmlInput;
-import com.gargoylesoftware.htmlunit.html.HtmlOption;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.html.HtmlSelect;
+import org.htmlunit.WebClient;
+import org.htmlunit.html.HtmlPage;
+import org.htmlunit.html.HtmlForm;
+import org.htmlunit.html.HtmlInput;
+import org.htmlunit.html.HtmlSelect;
+import org.htmlunit.html.HtmlOption;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -714,7 +715,7 @@ public class SignApksBuilderTest {
         String jobUrl = job.getUrl();
         String checkUrl = jobUrl + "/" + desc.getDescriptorUrl() + "/checkApksToSign?value=" + URLEncoder.encode("**/*-unsigned.apk, no_match-*.apk", "utf-8");
         JenkinsRule.WebClient browser = testJenkins.createWebClient();
-        String pageText = browser.goTo(checkUrl).asText();
+        String pageText = browser.goTo(checkUrl).getWebResponse().getContentAsString();
 
         FilePath workspace = build.getWorkspace();
         String validationMessage = workspace.validateAntFileMask("no_match-*.apk", FilePath.VALIDATE_ANT_FILE_MASK_BOUND);
@@ -723,7 +724,7 @@ public class SignApksBuilderTest {
         workspace.deleteContents();
         workspace.createTempFile("no_match-", ".apk");
 
-        pageText = browser.goTo(checkUrl).asText();
+        pageText = browser.goTo(checkUrl).getWebResponse().getContentAsString();
 
         validationMessage = workspace.validateAntFileMask("**/*-unsigned.apk", FilePath.VALIDATE_ANT_FILE_MASK_BOUND);
         assertThat(pageText, containsString(validationMessage));
@@ -754,7 +755,7 @@ public class SignApksBuilderTest {
         String jobUrl = job.getUrl();
         String checkUrl = jobUrl + "/" + desc.getDescriptorUrl() + "/checkApksToSign?value=" + URLEncoder.encode("**/*-unsigned.apk", "utf-8");
         HtmlPage page = testJenkins.createWebClient().goTo(checkUrl);
-        String pageText = page.asText();
+        String pageText = page.getWebResponse().getContentAsString();
 
         assertThat(pageText, not(containsString(InterruptedException.class.getSimpleName())));
         assertThat(pageText, containsString(Messages.validation_globSearchLimitReached(FilePath.VALIDATE_ANT_FILE_MASK_BOUND)));

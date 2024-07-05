@@ -1,0 +1,2 @@
+org.jenkinsci.plugins.androidsigning.VerifyApkCallable
+java.security.cert.Certificate$CertificateRep
