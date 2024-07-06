@@ -37,8 +37,8 @@
   </developers>
 
   <scm>
-    <connection>scm:git:ssh://github.com/jenkinsci/android-signing-plugin.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com/jenkinsci/android-signing-plugin.git</developerConnection>
+    <connection>scm:git:https://github.com/jenkinsci/android-signing-plugin.git</connection>
+    <developerConnection>scm:git:git@github.com:jenkinsci/android-signing-plugin.git</developerConnection>
     <url>https://github.com/jenkinsci/android-signing-plugin</url>
     <tag>HEAD</tag>
   </scm>
