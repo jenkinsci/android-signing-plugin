@@ -43,7 +43,19 @@
     <tag>HEAD</tag>
   </scm>
 
-  <!-- get every artifact through repo.jenkins-ci.org, which proxies all the artifacts that we need -->
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.jenkins.tools.bom</groupId>
+        <artifactId>bom-2.414.x</artifactId>
+        <version>2982.vdce2153031a_0</version>
+        <scope>import</scope>
+        <type>pom</type>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <!-- get artifacts through repo.jenkins-ci.org, rely on Maven Central fallback provided by Apache Maven -->
   <repositories>
     <repository>
       <id>repo.jenkins-ci.org</id>
