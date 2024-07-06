@@ -40,8 +40,7 @@ Thanks to Google/Android for making that library available as a
 
 ## Building
 
-Run `mvn package` to build a deployable HPI bundle for Jenkins.  Note this plugin
-**REQUIRES JDK 1.8** to build and run because of the dependency on the Android `apksig` library.
+Run `mvn package` to build a deployable HPI bundle for Jenkins.
 
 ## Installation
 
