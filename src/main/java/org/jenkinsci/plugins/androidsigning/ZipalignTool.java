@@ -191,6 +191,9 @@ class ZipalignTool {
                 return path;
             }
             FilePath parent = path.getParent();
+            if (parent == null) {
+                return null;
+            }
             String name = path.getName();
             String winCommand = name + ".exe";
             path = parent.child(winCommand);

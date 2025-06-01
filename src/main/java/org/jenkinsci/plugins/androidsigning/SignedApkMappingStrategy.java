@@ -73,7 +73,11 @@ public abstract class SignedApkMappingStrategy extends AbstractDescribableImpl<S
             if (!unsignedApk.getBaseName().endsWith("-unsigned")) {
                 strippedName += "-signed";
             }
-            return unsignedApk.getParent().child(strippedName + ".apk");
+            FilePath file = unsignedApk.getParent();
+            if (file == null) {
+                return null;
+            }
+            return file.child(strippedName + ".apk");
         }
 
         @Extension
