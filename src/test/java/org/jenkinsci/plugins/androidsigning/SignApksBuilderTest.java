@@ -743,7 +743,7 @@ public class SignApksBuilderTest {
         Build build = testJenkins.buildAndAssertSuccess(job);
 
         FilePath workspace = build.getWorkspace();
-        for (int i = 0; i < 10001; i++) {
+        for (int i = 0; i < (60000 + 1); i++) {
             workspace.createTempFile(String.format("%06d-", i), ".tmp");
         }
 
