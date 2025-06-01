@@ -352,6 +352,9 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
             listener.getLogger().printf("[SignApksBuilder] signing APK %s%n", alignedRelName);
 
             FilePath signedParent = signedApk.getParent();
+            if (signedParent == null) {
+                continue;
+            }
             if (!signedParent.exists()) {
                 signedParent.mkdirs();
             }

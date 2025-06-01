@@ -18,6 +18,8 @@ public class SigningComponents implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(value="DCN_NULLPOINTER_EXCEPTION",
+                                                        justification="getEntry can generate this exeception")
     public static SigningComponents fromCredentials(StandardCertificateCredentials creds, String keyAlias) throws GeneralSecurityException {
         KeyStore keyStore = creds.getKeyStore();
         if (StringUtils.isEmpty(keyAlias)) {
