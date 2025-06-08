@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>4.85</version>
+    <version>5.17</version>
     <relativePath />
   </parent>
 
@@ -23,18 +23,11 @@
   </licenses>
 
   <properties>
+    <!-- https://www.jenkins.io/doc/developer/plugin-development/choosing-jenkins-baseline/ -->
+    <jenkins.baseline>2.492</jenkins.baseline>
     <!-- Baseline Jenkins version you use to build the plugin. Users must have this version or newer to run. -->
-    <jenkins.version>2.414.3</jenkins.version>
+    <jenkins.version>${jenkins.baseline}.3</jenkins.version>
   </properties>
-
-  <developers>
-    <developer>
-      <id>restjohn</id>
-      <name>Robert St. John</name>
-      <organization>BIT Systems</organization>
-      <email>restjohn@gmail.com</email>
-    </developer>
-  </developers>
 
   <scm>
     <connection>scm:git:https://github.com/jenkinsci/android-signing-plugin.git</connection>
@@ -47,8 +40,8 @@
     <dependencies>
       <dependency>
         <groupId>io.jenkins.tools.bom</groupId>
-        <artifactId>bom-2.414.x</artifactId>
-        <version>2982.vdce2153031a_0</version>
+        <artifactId>bom-${jenkins.baseline}.x</artifactId>
+        <version>4890.vfca_82c6741a_d</version>
         <scope>import</scope>
         <type>pom</type>
       </dependency>
@@ -99,7 +92,6 @@
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>job-dsl</artifactId>
-      <version>1.87</version>
       <optional>true</optional>
     </dependency>
 
