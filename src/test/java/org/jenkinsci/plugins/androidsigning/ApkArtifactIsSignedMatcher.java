@@ -25,8 +25,8 @@ class ApkArtifactIsSignedMatcher extends BaseMatcher<BuildArtifact> {
     private final StringBuilder descText = new StringBuilder();
 
     private ApkArtifactIsSignedMatcher(String keyStoreId, String keyAlias) throws KeyStoreException {
-        List<StandardCertificateCredentials> result = CredentialsProvider.lookupCredentials(
-            StandardCertificateCredentials.class, Jenkins.getInstance(), ACL.SYSTEM, Collections.emptyList());
+        List<StandardCertificateCredentials> result = CredentialsProvider.lookupCredentialsInItemGroup(
+            StandardCertificateCredentials.class, Jenkins.get(), ACL.SYSTEM2, Collections.emptyList());
         signer = CredentialsMatchers.firstOrNull(result, CredentialsMatchers.withId(keyStoreId));
         expectedCert = (X509Certificate) signer.getKeyStore().getCertificate(keyAlias);
     }
