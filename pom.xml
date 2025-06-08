@@ -65,7 +65,7 @@
     <!-- com.android.tools.build:apksig -->
     <repository>
       <id>maven.google.com</id>
-      <url>https://maven.google.com</url>
+      <url>https://mvnrepository.com/artifact/com.android.tools.build/apksig</url>
     </repository>
   </repositories>
 
@@ -89,7 +89,7 @@
     <dependency>
       <groupId>com.android.tools.build</groupId>
       <artifactId>apksig</artifactId>
-      <version>7.0.3</version>
+      <version>8.10.1</version>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins.workflow</groupId>
