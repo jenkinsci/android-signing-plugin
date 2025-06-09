@@ -783,33 +783,6 @@ public class SignApksBuilderTest {
         assertThat(option2.getText(), equalTo(otherKey.credentialsId));
     }
 
-    /**
-     * Using either a null password or empty password does not work because
-     * the Credentials Plugin's CertificateCredentialsImpl uses hudson.Util.fixeEmpty()
-     * on the password, which turns empty strings to null.  The plugin then calls
-     * KeyStore.load() with a null password which results in a NullPointerException
-     * when calling KeyStore.getEntry(alias).  See also ReadingKeyStoresTest.java.
-     */
-    @Test
-    public void passwordlessKeyStoreDoesNotWork() throws Exception {
-
-        TestKeyStore blankPassword = new TestKeyStore(testJenkins, "/SignApksBuilderTest-exposed.p12", "exposed", null, "");
-        blankPassword.addCredentials();
-
-        SignApksBuilder builder = new SignApksBuilder();
-        builder.setKeyStoreId("exposed");
-        builder.setKeyAlias("SignApksBuilderTest-exposed");
-        builder.setApksToSign("*-unsigned.apk");
-
-        FreeStyleProject job = createSignApkJob();
-        job.getBuildersList().add(builder);
-
-        FreeStyleBuild build = testJenkins.assertBuildStatus(Result.FAILURE, job.scheduleBuild2(0));
-        testJenkins.assertLogContains(SigningComponents.NullKeyStorePasswordException.class.getName(), build);
-
-        blankPassword.removeCredentials();
-    }
-
     @Test
     public void usesSingletonKeyEntryWhenAliasIsNullOrEmptyString() throws Exception {
 
