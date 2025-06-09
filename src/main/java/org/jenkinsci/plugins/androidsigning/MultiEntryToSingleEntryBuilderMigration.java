@@ -8,7 +8,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import hudson.Extension;
-import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.model.Project;
 import hudson.model.listeners.ItemListener;
@@ -24,7 +23,7 @@ public class MultiEntryToSingleEntryBuilderMigration extends ItemListener {
 
     @Override
     public void onLoaded() {
-        Jenkins jenkins = Jenkins.getInstance();
+        Jenkins jenkins = Jenkins.get();
         if (jenkins == null) {
             log.warning("jenkins instance is null; cannot migrate old job data");
             return;
