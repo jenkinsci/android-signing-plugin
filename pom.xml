@@ -60,6 +60,11 @@
       <id>maven.google.com</id>
       <url>https://maven.google.com</url>
     </repository>
+    <repository>
+      <id>google</id>
+      <name>Google Maven Repository</name>
+      <url>https://dl.google.com/dl/android/maven2/</url>
+    </repository>
   </repositories>
 
   <pluginRepositories>
@@ -82,7 +87,7 @@
     <dependency>
       <groupId>com.android.tools.build</groupId>
       <artifactId>apksig</artifactId>
-      <version>7.4.0</version>
+      <version>8.10.1</version>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins.workflow</groupId>
