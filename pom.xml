@@ -57,10 +57,6 @@
     <!-- Google repository provides the library for signing APKs and for checking that APK signatures verify on Android -->
     <!-- com.android.tools.build:apksig -->
     <repository>
-      <id>maven.google.com</id>
-      <url>https://maven.google.com</url>
-    </repository>
-    <repository>
       <id>google</id>
       <name>Google Maven Repository</name>
       <url>https://dl.google.com/dl/android/maven2/</url>
