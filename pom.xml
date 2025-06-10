@@ -60,6 +60,11 @@
       <id>maven.google.com</id>
       <url>https://maven.google.com</url>
     </repository>
+    <repository>
+      <id>google</id>
+      <name>Google Maven Repository</name>
+      <url>https://dl.google.com/dl/android/maven2/</url>
+    </repository>
   </repositories>
 
   <pluginRepositories>
