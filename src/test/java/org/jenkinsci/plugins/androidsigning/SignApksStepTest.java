@@ -156,7 +156,7 @@ public class SignApksStepTest {
             "      androidHome: '%s'%n" +
             "    )%n" +
             "  }%n" +
-            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS, altAndroidHome)));
+            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS, altAndroidHome.replace("\\", "\\\\"))));
 
         testJenkins.buildAndAssertSuccess(job);
 
@@ -175,7 +175,7 @@ public class SignApksStepTest {
             "      zipalignPath: '%s'%n" +
             "    )%n" +
             "  }%n" +
-            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS, altZipalign)));
+            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS, altZipalign.replace("\\", "\\\\"))));
 
         testJenkins.buildAndAssertSuccess(job);
 
