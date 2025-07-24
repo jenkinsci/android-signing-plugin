@@ -251,8 +251,10 @@ class ZipalignTool {
 
         return new ArgumentListBuilder()
             .add(zipalign.getRemote())
+            .add("-P")
+            .add("16")
             .add("-f")
-            .add("-p").add("4")
+            .add("4")
             .add(unsignedApk)
             .add(outputApk);
     }
