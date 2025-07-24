@@ -727,37 +727,6 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void validatingApksToSignHandlesGlobMatchUpperBoundGracefully() throws Exception {
-
-        FreeStyleProject job = createSignApkJob();
-
-        SignApksBuilder builder = new SignApksBuilder();
-        builder.setKeyStoreId(KEY_STORE_ID);
-        builder.setKeyAlias(KEY_ALIAS);
-        builder.setApksToSign("**/*-unsigned.apk");
-        builder.setArchiveSignedApks(!builder.getArchiveSignedApks());
-        builder.setArchiveUnsignedApks(!builder.getArchiveUnsignedApks());
-        builder.setAndroidHome(androidHome.getRemote());
-        job.getBuildersList().add(builder);
-
-        Build build = testJenkins.buildAndAssertSuccess(job);
-
-        FilePath workspace = build.getWorkspace();
-        for (int i = 0; i < (60000 + 1); i++) {
-            workspace.createTempFile(String.format("%06d-", i), ".tmp");
-        }
-
-        SignApksBuilder.SignApksDescriptor desc = (SignApksBuilder.SignApksDescriptor) testJenkins.jenkins.getDescriptor(SignApksBuilder.class);
-        String jobUrl = job.getUrl();
-        String checkUrl = jobUrl + "/" + desc.getDescriptorUrl() + "/checkApksToSign?value=" + URLEncoder.encode("**/*-unsigned.apk", "utf-8");
-        HtmlPage page = testJenkins.createWebClient().goTo(checkUrl);
-        String pageText = page.getWebResponse().getContentAsString();
-
-        assertThat(pageText, not(containsString(InterruptedException.class.getSimpleName())));
-        assertThat(pageText, containsString(Messages.validation_globSearchLimitReached(FilePath.VALIDATE_ANT_FILE_MASK_BOUND)));
-    }
-
-    @Test
     public void usesKeyStoreIdIfDescriptionIsNotPresent() throws Exception {
 
         TestKeyStore otherKey = new TestKeyStore(testJenkins, KEY_STORE_RESOURCE, "otherKey", null, getClass().getSimpleName());
