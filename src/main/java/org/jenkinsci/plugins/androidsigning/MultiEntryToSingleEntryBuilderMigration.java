@@ -24,10 +24,6 @@ public class MultiEntryToSingleEntryBuilderMigration extends ItemListener {
     @Override
     public void onLoaded() {
         Jenkins jenkins = Jenkins.get();
-        if (jenkins == null) {
-            log.warning("jenkins instance is null; cannot migrate old job data");
-            return;
-        }
         List<Project> jobs = jenkins.getAllItems(Project.class);
         for (Project<?,?> job : jobs) {
             migrateBuildersOfJob(job);
