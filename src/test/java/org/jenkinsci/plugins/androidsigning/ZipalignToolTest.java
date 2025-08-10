@@ -19,7 +19,7 @@ import hudson.Util;
 import hudson.util.ArgumentListBuilder;
 
 import static org.hamcrest.CoreMatchers.startsWith;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 
 public class ZipalignToolTest {
