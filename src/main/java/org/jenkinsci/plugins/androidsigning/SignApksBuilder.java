@@ -43,7 +43,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-import javax.annotation.Nonnull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 import hudson.AbortException;
 import hudson.EnvVars;
@@ -239,7 +239,7 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
     }
 
     @Override
-    public void perform(@Nonnull Run<?, ?> run, @Nonnull FilePath workspace, @Nonnull Launcher launcher, @Nonnull TaskListener listener) throws InterruptedException, IOException {
+    public void perform(@NonNull Run<?, ?> run, @NonNull FilePath workspace, @NonNull Launcher launcher, @NonNull TaskListener listener) throws InterruptedException, IOException {
         if (isIntermediateFailure(run)) {
             listener.getLogger().println("[SignApksBuilder] skipping Sign APKs step because a previous step failed");
             return;
@@ -408,7 +408,7 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
         }
 
         @Override
-        public @Nonnull String getDisplayName() {
+        public @NonNull String getDisplayName() {
             return DISPLAY_NAME;
         }
 

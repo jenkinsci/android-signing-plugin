@@ -3,7 +3,7 @@ package org.jenkinsci.plugins.androidsigning;
 import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.DataBoundConstructor;
 
-import javax.annotation.Nonnull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 import hudson.Extension;
 import hudson.FilePath;
@@ -24,7 +24,7 @@ public class TestSignedApkMapping extends SignedApkMappingStrategy {
     @Extension
     @Symbol("testSignedApkMapping")
     public static class DescriptorImpl extends Descriptor<SignedApkMappingStrategy> {
-        @Nonnull
+        @NonNull
         @Override
         public String getDisplayName() {
             return TestSignedApkMapping.class.getSimpleName();

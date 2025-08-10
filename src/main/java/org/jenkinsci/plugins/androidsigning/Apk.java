@@ -6,7 +6,7 @@ import org.kohsuke.stapler.DataBoundSetter;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.annotation.Nonnull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 import hudson.Extension;
 import hudson.model.AbstractDescribableImpl;
@@ -68,7 +68,7 @@ public final class Apk extends AbstractDescribableImpl<Apk> {
 
     @Extension
     public static class DescriptorImpl extends Descriptor<Apk> {
-        @Override @Nonnull
+        @Override @NonNull
         public String getDisplayName() {
             return "APK Signing Entry";
         }

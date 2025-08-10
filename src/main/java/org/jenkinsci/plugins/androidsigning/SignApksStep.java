@@ -11,8 +11,8 @@ import org.jenkinsci.plugins.workflow.structs.DescribableHelper;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 
-import javax.annotation.CheckForNull;
-import javax.annotation.Nonnull;
+import edu.umd.cs.findbugs.annotations.CheckForNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 import hudson.EnvVars;
 import hudson.Extension;
@@ -187,7 +187,7 @@ public class SignApksStep extends AbstractStepImpl {
             return "signAndroidApks";
         }
 
-        @Nonnull
+        @NonNull
         @Override
         public String getDisplayName() {
             return Messages.builderDisplayName();

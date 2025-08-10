@@ -6,7 +6,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.annotation.Nonnull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 import hudson.Extension;
 import hudson.ExtensionList;
@@ -53,7 +53,7 @@ public abstract class SignedApkMappingStrategy extends AbstractDescribableImpl<S
         @Extension
         @Symbol("unsignedApkNameDir")
         public static class DescriptorImpl extends Descriptor<SignedApkMappingStrategy> {
-            @Nonnull
+            @NonNull
             @Override
             public String getDisplayName() {
                 return Messages.signedApkMapping_builderDir_displayName();
@@ -83,7 +83,7 @@ public abstract class SignedApkMappingStrategy extends AbstractDescribableImpl<S
         @Extension
         @Symbol("unsignedApkSibling")
         public static class DescriptorImpl extends Descriptor<SignedApkMappingStrategy> {
-            @Nonnull
+            @NonNull
             @Override
             public String getDisplayName() {
                 return Messages.signedApkMapping_unsignedSibling_displayName();
