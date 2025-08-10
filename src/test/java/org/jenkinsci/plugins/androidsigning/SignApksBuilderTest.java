@@ -78,7 +78,7 @@ import static org.jenkinsci.plugins.androidsigning.ApkArtifactIsSignedMatcher.is
 import static org.jenkinsci.plugins.androidsigning.TestKeyStore.KEY_ALIAS;
 import static org.jenkinsci.plugins.androidsigning.TestKeyStore.KEY_STORE_ID;
 import static org.jenkinsci.plugins.androidsigning.TestKeyStore.KEY_STORE_RESOURCE;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 
