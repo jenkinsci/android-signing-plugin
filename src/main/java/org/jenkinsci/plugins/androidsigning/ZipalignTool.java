@@ -8,8 +8,8 @@ import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 
 import hudson.AbortException;
 import hudson.EnvVars;
@@ -221,7 +221,7 @@ class ZipalignTool {
     private final String overrideZipalignPath;
     private FilePath zipalign;
 
-    ZipalignTool(@Nonnull EnvVars buildEnv, @Nonnull FilePath workspace, @Nonnull PrintStream logger, @Nullable String overrideAndroidHome, @Nullable String overrideZipalignPath) {
+    ZipalignTool(@NonNull EnvVars buildEnv, @NonNull FilePath workspace, @NonNull PrintStream logger, @Nullable String overrideAndroidHome, @Nullable String overrideZipalignPath) {
         this.buildEnv = buildEnv;
         this.workspace = workspace;
         this.logger = logger;
