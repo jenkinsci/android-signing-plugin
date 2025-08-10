@@ -4,9 +4,14 @@ import org.apache.commons.lang.StringUtils;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.charset.Charset;
+import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
@@ -14,6 +19,7 @@ import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.AbortException;
 import hudson.EnvVars;
 import hudson.FilePath;
+import hudson.Launcher;
 import hudson.util.ArgumentListBuilder;
 import hudson.util.VersionNumber;
 
@@ -24,7 +30,7 @@ class ZipalignTool {
     static final String ENV_ZIPALIGN_PATH = "ANDROID_ZIPALIGN";
     static final String ENV_PATH = "PATH";
 
-    private static FilePath findFromEnv(EnvVars env, FilePath workspace, PrintStream logger) throws AbortException {
+    private FilePath findFromEnv(EnvVars env, FilePath workspace, PrintStream logger) throws AbortException {
 
         String zipalignPath = env.get(ENV_ZIPALIGN_PATH);
         if (!StringUtils.isEmpty(zipalignPath)) {
@@ -51,12 +57,12 @@ class ZipalignTool {
         throw new AbortException("failed to find zipalign: no environment variable " + ENV_ZIPALIGN_PATH + " or " + ENV_ANDROID_HOME + " or " + ENV_PATH);
     }
 
-    private static FilePath findInAndroidHome(String androidHome, FilePath workspace, PrintStream logger) throws AbortException {
+    private FilePath findInAndroidHome(String androidHome, FilePath workspace, PrintStream logger) throws AbortException {
 
         FilePath buildTools = workspace.child(androidHome).child("build-tools");
         List<FilePath> versionDirs;
         try {
-            versionDirs = buildTools.listDirectories();
+            versionDirs = listDirectoriesWithLauncher(buildTools, logger);
         }
         catch (Exception e) {
             e.printStackTrace(logger);
@@ -92,7 +98,7 @@ class ZipalignTool {
         throw new AbortException("failed to find zipalign: no zipalign found in latest Android build tools: " + buildTools);
     }
 
-    private static FilePath findInPathEnvVar(String envPath, FilePath workspace, PrintStream logger) throws AbortException {
+    private FilePath findInPathEnvVar(String envPath, FilePath workspace, PrintStream logger) throws AbortException {
         String separator = null;
         try {
             separator = pathSeparatorForWorkspace(workspace);
@@ -104,8 +110,8 @@ class ZipalignTool {
         }
         String[] dirs = envPath.split(separator);
         for (String dir : dirs) {
-            logger.printf("[SignApksBuilder] checking %s dir %s for zipalign...%n", ENV_PATH, dir);
             FilePath dirPath = workspace.child(dir);
+            logger.printf("[SignApksBuilder] checking %s dir %s for zipalign...%n", ENV_PATH, dirPath.getRemote());
             FilePath zipalign = zipalignOrZipalignExe(dirPath, logger);
             if (zipalign != null) {
                 return zipalign;
@@ -135,7 +141,7 @@ class ZipalignTool {
         return workspace.act(new GetPathSeparator());
     }
 
-    private static FilePath androidHomeAncestorOfPath(FilePath path, PrintStream logger) throws Exception {
+    private FilePath androidHomeAncestorOfPath(FilePath path, PrintStream logger) throws Exception {
         if ("bin".equals(path.getName())) {
             FilePath sdkmanager = path.child("sdkmanager");
             if (commandOrWinCommandAtPath(sdkmanager, logger) != null) {
@@ -161,10 +167,10 @@ class ZipalignTool {
         return null;
     }
 
-    private static FilePath zipalignOrZipalignExe(FilePath zipalignOrDir, PrintStream logger) {
+    private FilePath zipalignOrZipalignExe(FilePath zipalignOrDir, PrintStream logger) {
         FilePath parent = zipalignOrDir.getParent();
         try {
-            if (zipalignOrDir.isDirectory()) {
+            if (isDirectoryWithLauncher(zipalignOrDir, logger)) {
                 parent = zipalignOrDir;
                 zipalignOrDir = zipalignOrDir.child("zipalign");
             }
@@ -182,27 +188,125 @@ class ZipalignTool {
         return null;
     }
 
-    private static FilePath commandOrWinCommandAtPath(FilePath path, PrintStream logger) {
+    private List<FilePath> listDirectoriesWithLauncher(FilePath parentPath, PrintStream logger) throws IOException, InterruptedException {
+        ArgumentListBuilder cmds = new ArgumentListBuilder();
+        Launcher decorated = launcher.decorateByEnv(buildEnv);
+
+        if (launcher.isUnix()) {
+            cmds.add("find", parentPath.getRemote(), "-mindepth", "1", "-type", "d");
+        } else {
+            cmds.add("dir", "/c", "/s", "/ad", "/b", parentPath.getRemote());
+            cmds = cmds.toWindowsCommand();
+        }
+
+        int exitCode = decorated.launch()
+                .cmds(cmds)
+                .pwd(workspace)
+                .stdout(outStream)
+                .stderr(logger)
+                .quiet(true)
+                .join();
+
+        if (exitCode != 0) {
+            return new ArrayList<>();
+        }
+
+        String result = outStream.toString(Charset.defaultCharset()).trim();
+
+        logger.println("[SignApksBuilder] Directories " + outStream.toString(Charset.defaultCharset()));
+
+        if (result.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        return Arrays.stream(result.split("\\R"))
+                .filter(p -> !p.trim().isEmpty())
+                .map(p -> new FilePath(parentPath, p))
+                .collect(Collectors.toList());
+    }
+
+    private boolean isDirectoryWithLauncher(FilePath filePath, PrintStream logger) throws IOException, InterruptedException {
+        ArgumentListBuilder cmds = new ArgumentListBuilder();
+        Launcher decorated = launcher.decorateByEnv(buildEnv);
+
+        if (launcher.isUnix()) {
+            cmds.add("test", "-d", filePath.getRemote());
+        } else {
+            cmds.add("dir", "/c", "/ad", "/b", filePath.getRemote());
+            cmds = cmds.toWindowsCommand();
+        }
+
+        int exitCode = decorated.launch()
+                .cmds(cmds)
+                .pwd(workspace)
+                .stdout(outStream)
+                .stderr(logger)
+                .quiet(true)
+                .join();
+
+        if (exitCode == 0) {
+            logger.printf("[SignApksBuilder] is Directory %s%n", outStream.toString(Charset.defaultCharset()));
+        }
+
+        return exitCode == 0;
+    }
+
+    private boolean fileExistsWithLauncher(FilePath filePath, PrintStream logger) throws IOException, InterruptedException {
+        ArgumentListBuilder cmds = new ArgumentListBuilder();
+        Launcher decorated = launcher.decorateByEnv(buildEnv);
+
+        if (launcher.isUnix()) {
+            cmds.add("test", "-f", filePath.getRemote());
+        } else {
+            cmds.add("dir", "/a-d", "/b", filePath.getRemote());
+            cmds = cmds.toWindowsCommand();
+        }
+
+        int exitCode = decorated.launch()
+                .cmds(cmds)
+                .pwd(workspace)
+                .stdout(outStream)
+                .stderr(logger)
+                .quiet(true)
+                .join();
+
+        String result = outStream.toString(Charset.defaultCharset());
+
+        if (exitCode == 0) {
+            logger.printf("[SignApksBuilder] is File %s%n", result);
+        }
+
+        return exitCode == 0;
+    }
+
+    private FilePath commandOrWinCommandAtPath(FilePath path, PrintStream logger) {
         try {
-            if (path.isDirectory()) {
+            if (isDirectoryWithLauncher(path, logger)) {
                 return null;
             }
-            if (path.exists()) {
+
+            if (fileExistsWithLauncher(path, logger)) {
                 return path;
             }
+
             FilePath parent = path.getParent();
             if (parent == null) {
                 return null;
             }
+
+            if (!isDirectoryWithLauncher(parent, logger)) {
+                return null;
+            }
+
             String name = path.getName();
             String winCommand = name + ".exe";
             path = parent.child(winCommand);
-            if (path.exists()) {
+            if (fileExistsWithLauncher(path, logger)) {
                 return path;
             }
             winCommand = name + ".bat";
             path = parent.child(winCommand);
-            if (path.exists()) {
+            if (fileExistsWithLauncher(path, logger)) {
                 return path;
             }
         }
@@ -214,17 +318,21 @@ class ZipalignTool {
         return null;
     }
 
+    private final Launcher launcher;
     private final EnvVars buildEnv;
     private final FilePath workspace;
     private final PrintStream logger;
     private final String overrideAndroidHome;
     private final String overrideZipalignPath;
+    private final ByteArrayOutputStream outStream;
     private FilePath zipalign;
 
-    ZipalignTool(@NonNull EnvVars buildEnv, @NonNull FilePath workspace, @NonNull PrintStream logger, @Nullable String overrideAndroidHome, @Nullable String overrideZipalignPath) {
+    ZipalignTool(@NonNull Launcher launcher, @NonNull ByteArrayOutputStream outStream, @NonNull EnvVars buildEnv, @NonNull FilePath workspace, @NonNull PrintStream logger, @Nullable String overrideAndroidHome, @Nullable String overrideZipalignPath) {
+        this.launcher = launcher;
         this.buildEnv = buildEnv;
         this.workspace = workspace;
         this.logger = logger;
+        this.outStream = outStream;
         this.overrideAndroidHome = overrideAndroidHome;
         this.overrideZipalignPath = overrideZipalignPath;
     }

@@ -1,11 +1,7 @@
 package org.jenkinsci.plugins.androidsigning;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.rules.TestName;
+import static org.hamcrest.CoreMatchers.startsWith;
+import static org.junit.Assert.assertThat;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,13 +9,19 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.Charset;
 
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
 import hudson.EnvVars;
 import hudson.FilePath;
-import hudson.Util;
+import hudson.Launcher;
+import hudson.model.TaskListener;
+import hudson.model.StreamBuildListener;
 import hudson.util.ArgumentListBuilder;
 
-import static org.hamcrest.CoreMatchers.startsWith;
-import static org.hamcrest.MatcherAssert.assertThat;
+import java.io.ByteArrayOutputStream;
 
 
 public class ZipalignToolTest {
@@ -57,8 +59,12 @@ public class ZipalignToolTest {
     @Test
     public void findsZipalignInAndroidHomeEnvVar() throws Exception {
         EnvVars envVars = new EnvVars();
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
+        Launcher.LocalLauncher launcher = new Launcher.LocalLauncher(taskListener);
+
         envVars.put(ZipalignTool.ENV_ANDROID_HOME, androidHome.getRemote());
-        ZipalignTool zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        ZipalignTool zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         ArgumentListBuilder cmd = zipalign.commandFor("test.apk", "test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(androidHomeZipalign.getRemote()));
@@ -67,8 +73,12 @@ public class ZipalignToolTest {
     @Test
     public void findsZipalignInAndroidZipalignEnvVar() throws Exception {
         EnvVars envVars = new EnvVars();
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
+        Launcher.LocalLauncher launcher = new Launcher.LocalLauncher(taskListener);
+
         envVars.put(ZipalignTool.ENV_ZIPALIGN_PATH, altZipalign.getRemote());
-        ZipalignTool zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        ZipalignTool zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         ArgumentListBuilder cmd = zipalign.commandFor("test.apk", "test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(altZipalign.getRemote()));
@@ -82,31 +92,37 @@ public class ZipalignToolTest {
         androidTool.write(getClass().getSimpleName(), "utf-8");
 
         EnvVars envVars = new EnvVars();
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
+        Launcher.LocalLauncher launcher = new Launcher.LocalLauncher(taskListener);
 
-        String path = String.join(File.pathSeparator, toolsDir.getRemote(), "/other/tools", "/other/bin");
+        String otherTools = launcher.isUnix() ? "/other/tools" : "\\other\\tools";
+        String otherBin = launcher.isUnix() ? "/other/bin" : "\\other\\bin";
+
+        String path = String.join(File.pathSeparator, toolsDir.getRemote(), otherTools, otherBin);
         envVars.put(ZipalignTool.ENV_PATH, path);
-        ZipalignTool zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        ZipalignTool zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         ArgumentListBuilder cmd = zipalign.commandFor("path-test.apk", "path-test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(androidHomeZipalign.getRemote()));
 
-        path = String.join(File.pathSeparator, "/other/tools", toolsDir.getRemote(), "/other/bin");
+        path = String.join(File.pathSeparator, otherTools, toolsDir.getRemote(), otherBin);
         envVars.put(ZipalignTool.ENV_PATH, path);
-        zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         cmd = zipalign.commandFor("path-test.apk", "path-test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(androidHomeZipalign.getRemote()));
 
-        path = String.join(File.pathSeparator, "/other/tools", "/other/bin", toolsDir.getRemote());
+        path = String.join(File.pathSeparator, otherTools, otherBin, toolsDir.getRemote());
         envVars.put(ZipalignTool.ENV_PATH, path);
-        zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         cmd = zipalign.commandFor("path-test.apk", "path-test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(androidHomeZipalign.getRemote()));
 
         path = String.join(File.pathSeparator, toolsDir.getRemote());
         envVars.put(ZipalignTool.ENV_PATH, path);
-        zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         cmd = zipalign.commandFor("path-test.apk", "path-test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(androidHomeZipalign.getRemote()));
@@ -120,31 +136,37 @@ public class ZipalignToolTest {
         sdkmanagerTool.write(getClass().getSimpleName(), "utf-8");
 
         EnvVars envVars = new EnvVars();
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
+        Launcher.LocalLauncher launcher = new Launcher.LocalLauncher(taskListener);
 
-        String path = String.join(File.pathSeparator, toolsBinDir.getRemote(), "/other/tools", "/other/bin");
+        String otherTools = launcher.isUnix() ? "/other/tools" : "\\other\\tools";
+        String otherBin = launcher.isUnix() ? "/other/bin" : "\\other\\bin";
+
+        String path = String.join(File.pathSeparator, toolsBinDir.getRemote(), otherTools, otherBin);
         envVars.put(ZipalignTool.ENV_PATH, path);
-        ZipalignTool zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        ZipalignTool zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         ArgumentListBuilder cmd = zipalign.commandFor("path-test.apk", "path-test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(androidHomeZipalign.getRemote()));
 
-        path = String.join(File.pathSeparator, "/other/tools", toolsBinDir.getRemote(), "/other/bin");
+        path = String.join(File.pathSeparator, otherTools, toolsBinDir.getRemote(), otherBin);
         envVars.put(ZipalignTool.ENV_PATH, path);
-        zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         cmd = zipalign.commandFor("path-test.apk", "path-test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(androidHomeZipalign.getRemote()));
 
-        path = String.join(File.pathSeparator, "/other/tools", "/other/bin", toolsBinDir.getRemote());
+        path = String.join(File.pathSeparator, otherTools, otherBin, toolsBinDir.getRemote());
         envVars.put(ZipalignTool.ENV_PATH, path);
-        zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         cmd = zipalign.commandFor("path-test.apk", "path-test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(androidHomeZipalign.getRemote()));
 
         path = String.join(File.pathSeparator, toolsBinDir.getRemote());
         envVars.put(ZipalignTool.ENV_PATH, path);
-        zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         cmd = zipalign.commandFor("path-test.apk", "path-test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(androidHomeZipalign.getRemote()));
@@ -155,31 +177,37 @@ public class ZipalignToolTest {
         FilePath zipalignDir = altZipalign.getParent();
 
         EnvVars envVars = new EnvVars();
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
+        Launcher.LocalLauncher launcher = new Launcher.LocalLauncher(taskListener);
 
-        String path = String.join(File.pathSeparator, zipalignDir.getRemote(), "/other/tools", "/other/bin");
+        String otherTools = launcher.isUnix() ? "/other/tools" : "\\other\\tools";
+        String otherBin = launcher.isUnix() ? "/other/bin" : "\\other\\bin";
+
+        String path = String.join(File.pathSeparator, zipalignDir.getRemote(), otherTools, otherBin);
         envVars.put(ZipalignTool.ENV_PATH, path);
-        ZipalignTool zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        ZipalignTool zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         ArgumentListBuilder cmd = zipalign.commandFor("path-test.apk", "path-test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(altZipalign.getRemote()));
 
-        path = String.join(File.pathSeparator, "/other/tools", zipalignDir.getRemote(), "/other/bin");
+        path = String.join(File.pathSeparator, otherTools, zipalignDir.getRemote(), otherBin);
         envVars.put(ZipalignTool.ENV_PATH, path);
-        zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         cmd = zipalign.commandFor("path-test.apk", "path-test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(altZipalign.getRemote()));
 
-        path = String.join(File.pathSeparator, "/other/tools", "/other/bin", zipalignDir.getRemote());
+        path = String.join(File.pathSeparator, otherTools, otherBin, zipalignDir.getRemote());
         envVars.put(ZipalignTool.ENV_PATH, path);
-        zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         cmd = zipalign.commandFor("path-test.apk", "path-test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(altZipalign.getRemote()));
 
         path = String.join(File.pathSeparator, zipalignDir.getRemote());
         envVars.put(ZipalignTool.ENV_PATH, path);
-        zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         cmd = zipalign.commandFor("path-test.apk", "path-test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(altZipalign.getRemote()));
@@ -188,9 +216,13 @@ public class ZipalignToolTest {
     @Test
     public void androidZiplignOverridesAndroidHome() throws Exception {
         EnvVars envVars = new EnvVars();
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
+        Launcher.LocalLauncher launcher = new Launcher.LocalLauncher(taskListener);
+
         envVars.put(ZipalignTool.ENV_ANDROID_HOME, androidHomeZipalign.getRemote());
         envVars.put(ZipalignTool.ENV_ZIPALIGN_PATH, altZipalign.getRemote());
-        ZipalignTool zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        ZipalignTool zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         ArgumentListBuilder cmd = zipalign.commandFor("test.apk", "test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(altZipalign.getRemote()));
@@ -204,8 +236,12 @@ public class ZipalignToolTest {
         newerZipalign.write("# fake zipalign", "utf-8");
 
         EnvVars envVars = new EnvVars();
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
+        Launcher.LocalLauncher launcher = new Launcher.LocalLauncher(taskListener);
+
         envVars.put(ZipalignTool.ENV_ANDROID_HOME, androidHome.getRemote());
-        ZipalignTool zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        ZipalignTool zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         ArgumentListBuilder cmd = zipalign.commandFor("test.apk", "test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(newerZipalign.getRemote()));
@@ -216,13 +252,17 @@ public class ZipalignToolTest {
     @Test
     public void explicitAndroidHomeOverridesEnvVars() throws Exception {
         EnvVars envVars = new EnvVars();
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
+        Launcher.LocalLauncher launcher = new Launcher.LocalLauncher(taskListener);
+
         envVars.put(ZipalignTool.ENV_ANDROID_HOME, androidHomeZipalign.getRemote());
         envVars.put(ZipalignTool.ENV_ZIPALIGN_PATH, altZipalign.getRemote());
 
         FilePath explicitAndroidHome = workspace.createTempDir("my-android-home", "");
         androidHome.copyRecursiveTo(explicitAndroidHome);
 
-        ZipalignTool zipalign = new ZipalignTool(envVars, workspace, System.out, explicitAndroidHome.getRemote(), null);
+        ZipalignTool zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, explicitAndroidHome.getRemote(), null);
         ArgumentListBuilder cmd = zipalign.commandFor("test.apk", "test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(explicitAndroidHome.getRemote()));
@@ -233,12 +273,16 @@ public class ZipalignToolTest {
     @Test
     public void explicitZipalignOverridesEnvZipaligns() throws IOException, InterruptedException {
         EnvVars envVars = new EnvVars();
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
+        Launcher.LocalLauncher launcher = new Launcher.LocalLauncher(taskListener);
+
         envVars.put(ZipalignTool.ENV_ANDROID_HOME, androidHomeZipalign.getRemote());
         envVars.put(ZipalignTool.ENV_ZIPALIGN_PATH, altZipalign.getRemote());
 
         FilePath explicitZipalign = workspace.createTempDir("my-zipalign", "").child("zipalign");
         explicitZipalign.write("# fake zipalign", "utf-8");
-        ZipalignTool zipalign = new ZipalignTool(envVars, workspace, System.out, null, explicitZipalign.getRemote());
+        ZipalignTool zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, explicitZipalign.getRemote());
         ArgumentListBuilder cmd = zipalign.commandFor("test.apk", "test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(explicitZipalign.getRemote()));
@@ -249,6 +293,10 @@ public class ZipalignToolTest {
     @Test
     public void explicitZipalignOverridesEverything() throws Exception {
         EnvVars envVars = new EnvVars();
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
+        Launcher.LocalLauncher launcher = new Launcher.LocalLauncher(taskListener);
+
         envVars.put(ZipalignTool.ENV_ANDROID_HOME, androidHomeZipalign.getRemote());
         envVars.put(ZipalignTool.ENV_ZIPALIGN_PATH, altZipalign.getRemote());
 
@@ -258,7 +306,7 @@ public class ZipalignToolTest {
         FilePath explicitZipalign = workspace.createTempDir("my-zipalign", "").child("zipalign");
         explicitZipalign.write("# fake zipalign", "utf-8");
 
-        ZipalignTool zipalign = new ZipalignTool(envVars, workspace, System.out, explicitAndroidHome.getRemote(), explicitZipalign.getRemote());
+        ZipalignTool zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, explicitAndroidHome.getRemote(), explicitZipalign.getRemote());
         ArgumentListBuilder cmd = zipalign.commandFor("test.apk", "test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(explicitZipalign.getRemote()));
@@ -274,8 +322,12 @@ public class ZipalignToolTest {
         FilePath winAndroidHomeZipalign = winAndroidHome.child("build-tools").child("1.0").child("zipalign.exe");
 
         EnvVars envVars = new EnvVars();
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
+        Launcher.LocalLauncher launcher = new Launcher.LocalLauncher(taskListener);
+
         envVars.put(ZipalignTool.ENV_ANDROID_HOME, winAndroidHome.getRemote());
-        ZipalignTool zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        ZipalignTool zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         ArgumentListBuilder cmd = zipalign.commandFor("test.apk", "test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(winAndroidHomeZipalign.getRemote()));
@@ -289,8 +341,12 @@ public class ZipalignToolTest {
         FilePath unsuffixedZipalign = suffixedZipalign.getParent().child("zipalign");
 
         EnvVars envVars = new EnvVars();
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
+        Launcher.LocalLauncher launcher = new Launcher.LocalLauncher(taskListener);
+
         envVars.put(ZipalignTool.ENV_ZIPALIGN_PATH, unsuffixedZipalign.getRemote());
-        ZipalignTool zipalign = new ZipalignTool(envVars, workspace, System.out, null, null);
+        ZipalignTool zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, null);
         ArgumentListBuilder cmd = zipalign.commandFor("test.apk", "test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(suffixedZipalign.getRemote()));
@@ -303,7 +359,11 @@ public class ZipalignToolTest {
         FilePath winAndroidHomeZipalign = winAndroidHome.child("build-tools").child("1.0").child("zipalign.exe");
 
         EnvVars envVars = new EnvVars();
-        ZipalignTool zipalign = new ZipalignTool(envVars, workspace, System.out, winAndroidHome.getRemote(), null);
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
+        Launcher.LocalLauncher launcher = new Launcher.LocalLauncher(taskListener);
+
+        ZipalignTool zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, winAndroidHome.getRemote(), null);
         ArgumentListBuilder cmd = zipalign.commandFor("test.apk", "test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(winAndroidHomeZipalign.getRemote()));
@@ -317,7 +377,11 @@ public class ZipalignToolTest {
         FilePath unsuffixedZipalign = suffixedZipalign.getParent().child("zipalign");
 
         EnvVars envVars = new EnvVars();
-        ZipalignTool zipalign = new ZipalignTool(envVars, workspace, System.out, null, unsuffixedZipalign.getRemote());
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
+        Launcher.LocalLauncher launcher = new Launcher.LocalLauncher(taskListener);
+
+        ZipalignTool zipalign = new ZipalignTool(launcher, bytes, envVars, workspace, System.out, null, unsuffixedZipalign.getRemote());
         ArgumentListBuilder cmd = zipalign.commandFor("test.apk", "test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(suffixedZipalign.getRemote()));
@@ -326,15 +390,19 @@ public class ZipalignToolTest {
     @Test
     public void resolvesVariableReferencesInExplicitParameters() throws Exception {
         EnvVars env = new EnvVars();
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
+        Launcher.LocalLauncher launcher = new Launcher.LocalLauncher(taskListener);
+
         env.put("ALT_ZIPALIGN", altZipalign.getRemote());
-        ZipalignTool zipalign = new ZipalignTool(env, workspace, System.out, null, "${ALT_ZIPALIGN}");
+        ZipalignTool zipalign = new ZipalignTool(launcher, bytes, env, workspace, System.out, null, "${ALT_ZIPALIGN}");
         ArgumentListBuilder cmd = zipalign.commandFor("test.apk", "test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(altZipalign.getRemote()));
 
         env.clear();
         env.put("ALT_ANDROID_HOME", androidHome.getRemote());
-        zipalign = new ZipalignTool(env, workspace, System.out, "${ALT_ANDROID_HOME}", null);
+        zipalign = new ZipalignTool(launcher, bytes, env, workspace, System.out, "${ALT_ANDROID_HOME}", null);
         cmd = zipalign.commandFor("test.apk", "test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(androidHomeZipalign.getRemote()));
@@ -345,9 +413,13 @@ public class ZipalignToolTest {
         URL url = getClass().getResource("/win-android");
         FilePath winAndroidHome = new FilePath(new File(url.toURI()));
         EnvVars env = new EnvVars();
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
+        Launcher.LocalLauncher launcher = new Launcher.LocalLauncher(taskListener);
+
         env.put("PATH", winAndroidHome.getRemote());
 
-        ZipalignTool zipalign = new ZipalignTool(env, workspace, System.out, null, null);
+        ZipalignTool zipalign = new ZipalignTool(launcher, bytes, env, workspace, System.out, null, null);
         ArgumentListBuilder cmd = zipalign.commandFor("test.apk", "test-aligned.apk");
 
         assertThat(cmd.toString(), startsWith(winAndroidHome.getRemote()));

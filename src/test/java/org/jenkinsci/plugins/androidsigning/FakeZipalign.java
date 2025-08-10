@@ -18,6 +18,11 @@ class FakeZipalign implements FakeLauncher {
     @Override
     public Proc onLaunch(Launcher.ProcStarter p) throws IOException {
         if (!p.cmds().get(0).contains("zipalign")) {
+            if (p.cmds().get(0).contains("find") ||
+                p.cmds().get(0).contains("test") ||
+                p.cmds().get(0).contains("cmd.exe")) {
+                return null;
+            }
             return new FinishedProc(0);
         }
         lastProc = p;
