@@ -167,10 +167,10 @@ public class SignApksBuilderTest {
         androidHomeEnvProp = new EnvironmentVariablesNodeProperty();
         EnvVars envVars = androidHomeEnvProp.getEnvVars();
         URL androidHomeUrl = getClass().getResource("/android");
-        String androidHomePath = androidHomeUrl.getPath();
+        androidHome = new FilePath(new File(androidHomeUrl.toURI()));
+        String androidHomePath = androidHome.getRemote();
         envVars.put("ANDROID_HOME", androidHomePath);
         testJenkins.jenkins.getGlobalNodeProperties().add(androidHomeEnvProp);
-        androidHome = new FilePath(new File(androidHomeUrl.toURI()));
 
         // add a slave so i can use my fake launcher
         zipalignLauncher = new FakeZipalign();
