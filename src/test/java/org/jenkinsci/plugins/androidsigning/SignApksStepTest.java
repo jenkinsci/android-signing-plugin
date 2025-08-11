@@ -69,7 +69,7 @@ public class SignApksStepTest {
             "      androidHome: env.ANDROID_HOME%n" +
             "    )%n" +
             "  }%n" +
-            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS)));
+            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
 
         WorkflowRun build = testJenkins.buildAndAssertSuccess(job);
         List<String> artifactNames = build.getArtifacts().stream().map(Run.Artifact::getFileName).collect(Collectors.toList());
@@ -94,7 +94,7 @@ public class SignApksStepTest {
             "      apksToSign: '*-unsigned.apk, **/*-release-unsigned.apk'%n" +
             "    )%n" +
             "  }%n" +
-            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS)));
+            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
 
         WorkflowRun build = testJenkins.buildAndAssertSuccess(job);
         List<String> artifactNames = build.getArtifacts().stream().map(Run.Artifact::getFileName).collect(Collectors.toList());
@@ -123,7 +123,7 @@ public class SignApksStepTest {
             "      apksToSign: '**/*-unsigned.apk'%n" +
             "    )%n" +
             "  }%n" +
-            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS)));
+            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
 
         WorkflowRun build = testJenkins.buildAndAssertSuccess(job);
         List<String> artifactNames = build.getArtifacts().stream().map(Run.Artifact::getFileName).collect(Collectors.toList());
@@ -156,7 +156,7 @@ public class SignApksStepTest {
             "      androidHome: '%s'%n" +
             "    )%n" +
             "  }%n" +
-            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS, altAndroidHome.replace("\\", "\\\\"))));
+            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS, altAndroidHome.replace("\\", "\\\\")), false));
 
         testJenkins.buildAndAssertSuccess(job);
 
@@ -175,7 +175,7 @@ public class SignApksStepTest {
             "      zipalignPath: '%s'%n" +
             "    )%n" +
             "  }%n" +
-            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS, altZipalign.replace("\\", "\\\\"))));
+            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS, altZipalign.replace("\\", "\\\\")), false));
 
         testJenkins.buildAndAssertSuccess(job);
 
@@ -195,7 +195,7 @@ public class SignApksStepTest {
                 "      skipZipalign: true%n" +
                 "    )%n" +
                 "  }%n" +
-                "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS)));
+                "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
 
         testJenkins.buildAndAssertSuccess(job);
 
@@ -216,7 +216,7 @@ public class SignApksStepTest {
             "    )%n" +
             "    archive includes: 'SignApksBuilderTest.apk'%n" +
             "  }%n" +
-            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS)));
+            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
 
         WorkflowRun run = testJenkins.buildAndAssertSuccess(job);
         List<WorkflowRun.Artifact> artifacts = run.getArtifacts();
@@ -240,7 +240,7 @@ public class SignApksStepTest {
                 "    )%n" +
                 "    archive includes: 'TestSignedApkMapping-SignApksBuilderTest-unsigned.apk'%n" +
                 "  }%n" +
-                "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS)));
+                "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
 
         WorkflowRun run = testJenkins.buildAndAssertSuccess(job);
         List<WorkflowRun.Artifact> artifacts = run.getArtifacts();
