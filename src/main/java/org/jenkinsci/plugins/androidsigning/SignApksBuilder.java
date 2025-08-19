@@ -25,6 +25,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -285,7 +286,8 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
         FilePath zipalignDir = builderDir.child("zipalign");
         zipalignDir.mkdirs();
 
-        ZipalignTool zipalign = new ZipalignTool(env, workspace, listener.getLogger(), androidHome, zipalignPath);
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        ZipalignTool zipalign = new ZipalignTool(launcher, bytes, env, workspace, listener.getLogger(), androidHome, zipalignPath);
         Map<String,String> apksToArchive = new LinkedHashMap<>();
 
         StandardCertificateCredentials keyStoreCredential = getKeystore(getKeyStoreId(), run.getParent());
