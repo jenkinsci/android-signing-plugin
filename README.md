@@ -171,7 +171,7 @@ You can include a _Sign Android APKs_ build step in the `steps` context of a Job
 ```
 freeStyleJob('myApp.seed') {
     scm {
-        git 'git://github.com/mygithub/myApp.git', 'master', {
+        git 'https://github.com/mygithub/myApp.git', 'master', {
             extensions {
                 relativeTragetDirectory 'myApp'
             }
