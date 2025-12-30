@@ -1,8 +1,7 @@
 package org.jenkinsci.plugins.androidsigning;
 
-
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -12,7 +11,6 @@ import java.security.KeyFactory;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.UnrecoverableEntryException;
-import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -22,15 +20,16 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class ReadingKeyStoresTest {
+class ReadingKeyStoresTest {
 
-    static PrivateKey basePemKey;
-    static Certificate basePemCert;
+    private static PrivateKey basePemKey;
+    private static Certificate basePemCert;
 
-    @BeforeClass
-    public static void parseBaseKeys() throws Exception {
+    @BeforeAll
+    static void beforeAll() throws Exception {
         BufferedReader in = new BufferedReader(new InputStreamReader(
             ReadingKeyStoresTest.class.getResourceAsStream("/SignApksBuilderTest-key-exposed.pkcs8.pem")));
         StringBuilder bareBase64 = new StringBuilder();
@@ -50,7 +49,7 @@ public class ReadingKeyStoresTest {
     }
 
     @Test
-    public void loadKeyStoreWithPassword() throws Exception {
+    void loadKeyStoreWithPassword() throws Exception {
         InputStream keyStoreIn = getClass().getResourceAsStream("/SignApksBuilderTest.p12");
         KeyStore store = KeyStore.getInstance("PKCS12");
         store.load(keyStoreIn, "SignApksBuilderTest".toCharArray());
@@ -74,7 +73,7 @@ public class ReadingKeyStoresTest {
     }
 
     @Test
-    public void loadAKeyStoreWithBlankPassword() throws Exception {
+    void loadAKeyStoreWithBlankPassword() throws Exception {
         InputStream keyStoreIn = getClass().getResourceAsStream("/SignApksBuilderTest-exposed.p12");
         KeyStore store = KeyStore.getInstance("PKCS12");
         store.load(keyStoreIn, new char[0]);
@@ -98,60 +97,38 @@ public class ReadingKeyStoresTest {
     }
 
     @Test
-    public void doesNotWorkWithoutProvidingAKeyPasswordMatchingStorePassword() throws Exception {
+    void doesNotWorkWithoutProvidingAKeyPasswordMatchingStorePassword() throws Exception {
         InputStream keyStoreIn = getClass().getResourceAsStream("/SignApksBuilderTest-noKeyPass.p12");
         KeyStore store = KeyStore.getInstance("PKCS12");
         store.load(keyStoreIn, "SignApksBuilderTest-noKeyPass".toCharArray());
 
         assertTrue(store.containsAlias("SignApksBuilderTest-noKeyPass"));
 
-        KeyStore.PasswordProtection prot = new KeyStore.PasswordProtection(new char[0]);
-        KeyStore.PrivateKeyEntry entry = null;
-        try {
-            entry = (KeyStore.PrivateKeyEntry) store.getEntry("SignApksBuilderTest-noKeyPass", prot);
-        }
-        catch (UnrecoverableEntryException e) {
-        }
-        Key key = null;
-        try {
-            key = store.getKey("SignApksBuilderTest-noKeyPass", prot.getPassword());
-        }
-        catch (UnrecoverableKeyException e) {
-        }
+        KeyStore.PasswordProtection dummy = new KeyStore.PasswordProtection(new char[0]);
 
-        assertThat(entry, nullValue());
-        assertThat(key, nullValue());
+        assertThrows(UnrecoverableEntryException.class, () -> store.getEntry("SignApksBuilderTest-noKeyPass", dummy));
+        assertThrows(UnrecoverableEntryException.class, () -> store.getKey("SignApksBuilderTest-noKeyPass", dummy.getPassword()));
 
-        prot = new KeyStore.PasswordProtection("SignApksBuilderTest-noKeyPass".toCharArray());
-        entry = (KeyStore.PrivateKeyEntry) store.getEntry("SignApksBuilderTest-noKeyPass", prot);
-        key = store.getKey("SignApksBuilderTest-noKeyPass", prot.getPassword());
+        KeyStore.PasswordProtection prot = new KeyStore.PasswordProtection("SignApksBuilderTest-noKeyPass".toCharArray());
+        KeyStore.PrivateKeyEntry entry = (KeyStore.PrivateKeyEntry) store.getEntry("SignApksBuilderTest-noKeyPass", prot);
+        Key key = store.getKey("SignApksBuilderTest-noKeyPass", prot.getPassword());
 
         assertThat(entry.getPrivateKey(), equalTo(basePemKey));
         assertThat(key, equalTo(basePemKey));
     }
 
-    @Test(expected = NullPointerException.class)
-    public void loadingPasswordlessKeyStoreWithNullPasswordInsteadOfEmptyDoesNotWork() throws Exception {
+    @Test
+    void loadingPasswordlessKeyStoreWithNullPasswordInsteadOfEmptyDoesNotWork() throws Exception {
         InputStream keyStoreIn = getClass().getResourceAsStream("/SignApksBuilderTest-exposed.p12");
         KeyStore store = KeyStore.getInstance("PKCS12");
         store.load(keyStoreIn, null);
-
         assertTrue(store.containsAlias("SignApksBuilderTest-exposed"));
-
         KeyStore.PasswordProtection prot = new KeyStore.PasswordProtection(new char[0]);
-        KeyStore.PrivateKeyEntry entry = (KeyStore.PrivateKeyEntry) store.getEntry("SignApksBuilderTest-exposed", prot);
+        assertThrows(NullPointerException.class, () -> store.getEntry("SignApksBuilderTest-exposed", prot));
         Key key = store.getKey("SignApksBuilderTest-exposed", prot.getPassword());
         Certificate[] chain = store.getCertificateChain("SignApksBuilderTest-exposed");
-
-        assertThat(entry.getPrivateKey(), equalTo(basePemKey));
-        assertThat(entry.getCertificateChain(), not(nullValue()));
-        assertThat(entry.getCertificateChain().length, equalTo(1));
-        assertThat(entry.getCertificateChain()[0], equalTo(basePemCert));
-
         assertThat(key, equalTo(basePemKey));
-
-        assertThat(chain.length, equalTo(1));
-        assertThat(chain[0], equalTo(basePemCert));
+        assertThat(chain, nullValue());
     }
 
 }

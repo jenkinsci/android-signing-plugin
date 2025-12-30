@@ -3,10 +3,9 @@ package org.jenkinsci.plugins.androidsigning;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.RuleChain;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.PretendSlave;
 
@@ -18,6 +17,7 @@ import java.util.stream.Collectors;
 import hudson.EnvVars;
 import hudson.model.Run;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
 import static org.hamcrest.CoreMatchers.endsWith;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -25,23 +25,24 @@ import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.fail;
 
 
-public class SignApksStepTest {
+@WithJenkins
+class SignApksStepTest {
 
-    private JenkinsRule testJenkins = new JenkinsRule();
-    private TestKeyStore testKeyStore = new TestKeyStore(testJenkins);
-
-    @Rule
-    public RuleChain jenkinsChain = RuleChain.outerRule(testJenkins).around(testKeyStore);
+    private JenkinsRule testJenkins;
+    private TestKeyStore testKeyStore;
 
     private String androidHome;
     private PretendSlave slave;
     private FakeZipalign zipalign;
 
-    @Before
-    public void setupEnvironment() throws Exception {
+    @BeforeEach
+    void beforeEach(JenkinsRule rule) throws Exception {
+        testJenkins = rule;
+        testKeyStore = new TestKeyStore(testJenkins);
+        testKeyStore.addCredentials();
+
         URL androidHomeUrl = getClass().getResource("/android");
         androidHome = new File(androidHomeUrl.toURI()).getAbsolutePath();
         EnvironmentVariablesNodeProperty prop = new EnvironmentVariablesNodeProperty();
@@ -54,8 +55,13 @@ public class SignApksStepTest {
         slave.setLabelString(slave.getLabelString() + " " + getClass().getSimpleName());
     }
 
+    @AfterEach
+    void afterEach() {
+        testKeyStore.removeCredentials();
+    }
+
     @Test
-    public void dslWorks() throws Exception {
+    void dslWorks() throws Exception {
         WorkflowJob job = testJenkins.jenkins.createProject(WorkflowJob.class, getClass().getSimpleName());
         job.setDefinition(new CpsFlowDefinition(String.format(
             "node('%s') {%n" +
@@ -83,7 +89,7 @@ public class SignApksStepTest {
     }
 
     @Test
-    public void setsAndroidHomeFromEnvVarsIfNotSpecifiedInScript() throws Exception {
+    void setsAndroidHomeFromEnvVarsIfNotSpecifiedInScript() throws Exception {
         WorkflowJob job = testJenkins.jenkins.createProject(WorkflowJob.class, getClass().getSimpleName());
         job.setDefinition(new CpsFlowDefinition(String.format(
             "node('%s') {%n" +
@@ -106,7 +112,7 @@ public class SignApksStepTest {
     }
 
     @Test
-    public void setsAndroidZipalignFromEnvVarsIfNotSpecifiedInScript() throws Exception {
+    void setsAndroidZipalignFromEnvVarsIfNotSpecifiedInScript() throws Exception {
         URL altZipalignUrl = getClass().getResource("/alt-zipalign/zipalign");
         String altZipalign = new File(altZipalignUrl.toURI()).getAbsolutePath();
         EnvironmentVariablesNodeProperty prop = new EnvironmentVariablesNodeProperty();
@@ -136,7 +142,7 @@ public class SignApksStepTest {
     }
 
     @Test
-    public void doesNotUseEnvVarsIfScriptSpecifiesAndroidHomeOrZipalign() throws Exception {
+    void doesNotUseEnvVarsIfScriptSpecifiesAndroidHomeOrZipalign() throws Exception {
         URL altAndroidHomeUrl = getClass().getResource("/win-android");
         String altAndroidHome = new File(altAndroidHomeUrl.toURI()).getAbsolutePath();
 
@@ -183,7 +189,7 @@ public class SignApksStepTest {
     }
 
     @Test
-    public void skipsZipalign() throws Exception {
+    void skipsZipalign() throws Exception {
         WorkflowJob job = testJenkins.jenkins.createProject(WorkflowJob.class, getClass().getSimpleName());
         job.setDefinition(new CpsFlowDefinition(String.format(
             "node('%s') {%n" +
@@ -203,7 +209,7 @@ public class SignApksStepTest {
     }
 
     @Test
-    public void signedApkMappingDefaultsToUnsignedApkSibling() throws Exception {
+    void signedApkMappingDefaultsToUnsignedApkSibling() throws Exception {
         WorkflowJob job = testJenkins.jenkins.createProject(WorkflowJob.class, getClass().getSimpleName());
         job.setDefinition(new CpsFlowDefinition(String.format(
             "node('%s') {%n" +
@@ -226,7 +232,7 @@ public class SignApksStepTest {
     }
 
     @Test
-    public void usesSpecifiedSignedApkMapping() throws Exception {
+    void usesSpecifiedSignedApkMapping() throws Exception {
         WorkflowJob job = testJenkins.jenkins.createProject(WorkflowJob.class, getClass().getSimpleName());
         job.setDefinition(new CpsFlowDefinition(String.format(
             "node('%s') {%n" +

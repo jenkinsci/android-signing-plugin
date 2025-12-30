@@ -2,6 +2,7 @@ package org.jenkinsci.plugins.androidsigning;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serial;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 
@@ -11,6 +12,7 @@ import jenkins.MasterToSlaveFileCallable;
 
 class CopyFileCallable extends MasterToSlaveFileCallable<Void> {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     private final String destPath;
@@ -20,7 +22,7 @@ class CopyFileCallable extends MasterToSlaveFileCallable<Void> {
     }
 
     @Override
-    public Void invoke(File f, VirtualChannel channel) throws IOException, InterruptedException {
+    public Void invoke(File f, VirtualChannel channel) throws IOException {
         long fileSize = f.length();
         FileChannel inChannel = FileChannel.open(f.toPath(), StandardOpenOption.READ);
         FileChannel outChannel = FileChannel.open(new File(destPath).toPath(),

@@ -2,14 +2,11 @@ package org.jenkinsci.plugins.androidsigning.compatibility;
 
 import org.jenkinsci.plugins.androidsigning.SignApksBuilder;
 import org.jenkinsci.plugins.androidsigning.SignedApkMappingStrategy;
-import org.jenkinsci.plugins.workflow.job.WorkflowJob;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 import org.jvnet.hudson.test.recipes.LocalData;
-
-import java.io.IOException;
-import java.net.URISyntaxException;
 
 import hudson.model.FreeStyleProject;
 import hudson.tasks.Builder;
@@ -21,14 +18,19 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 
-public class SignApksBuilderCompatibility_2_1_0_Test {
+@WithJenkins
+class SignApksBuilderCompatibility_2_1_0_Test {
 
-    @Rule
-    public JenkinsRule testJenkins = new JenkinsRule();
+    private JenkinsRule testJenkins;
+    
+    @BeforeEach
+    void beforeEach(JenkinsRule rule) {
+        testJenkins = rule;
+    }
 
     @Test
     @LocalData
-    public void doesNotSkipZipalignFor_v2_1_0_builders() throws Exception {
+    void doesNotSkipZipalignFor_v2_1_0_builders() {
 
         FreeStyleProject job = (FreeStyleProject) testJenkins.jenkins.getItem(getClass().getSimpleName());
         DescribableList<Builder,?> builders = job.getBuildersList();
@@ -54,7 +56,7 @@ public class SignApksBuilderCompatibility_2_1_0_Test {
 
     @Test
     @LocalData
-    public void usesOldSignedApkMappingFor_v2_1_0_builders() throws Exception {
+    void usesOldSignedApkMappingFor_v2_1_0_builders() {
 
         FreeStyleProject job = (FreeStyleProject) testJenkins.jenkins.getItem(getClass().getSimpleName());
         DescribableList<Builder,?> builders = job.getBuildersList();

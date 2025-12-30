@@ -1,5 +1,6 @@
 package org.jenkinsci.plugins.androidsigning;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.File;
@@ -47,6 +48,7 @@ public class CopyTestWorkspace extends SimpleBuildWrapper {
         }
 
         @Override
+        @NonNull
         public String getDisplayName() {
             return getClass().getSimpleName();
         }

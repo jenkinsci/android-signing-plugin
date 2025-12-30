@@ -4,12 +4,5 @@ import hudson.model.FreeStyleBuild;
 import hudson.model.Run;
 
 
-class BuildArtifact {
-    final FreeStyleBuild build;
-    final Run.Artifact artifact;
-
-    BuildArtifact(FreeStyleBuild build, Run.Artifact artifact) {
-        this.build = build;
-        this.artifact = artifact;
-    }
+record BuildArtifact(FreeStyleBuild build, Run.Artifact artifact) {
 }

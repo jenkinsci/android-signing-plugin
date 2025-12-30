@@ -2,13 +2,11 @@ package org.jenkinsci.plugins.androidsigning.compatibility;
 
 import org.jenkinsci.plugins.androidsigning.SignApksBuilder;
 import org.jenkinsci.plugins.androidsigning.SignedApkMappingStrategy;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 import org.jvnet.hudson.test.recipes.LocalData;
-
-import java.io.IOException;
-import java.net.URISyntaxException;
 
 import hudson.model.FreeStyleProject;
 import hudson.tasks.Builder;
@@ -20,14 +18,19 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 
-public class SignApksBuilderCompatibility_2_0_8_Test {
+@WithJenkins
+class SignApksBuilderCompatibility_2_0_8_Test {
 
-    @Rule
-    public JenkinsRule testJenkins = new JenkinsRule();
+    private JenkinsRule testJenkins;
+
+    @BeforeEach
+    void beforeEach(JenkinsRule rule) {
+        testJenkins = rule;
+    }
 
     @Test
     @LocalData
-    public void converts_v2_0_8_entriesToBuilders() throws URISyntaxException, IOException {
+    void converts_v2_0_8_entriesToBuilders() {
 
         FreeStyleProject job = (FreeStyleProject) testJenkins.jenkins.getItem(getClass().getSimpleName());
         DescribableList<Builder,?> builders = job.getBuildersList();
@@ -58,7 +61,7 @@ public class SignApksBuilderCompatibility_2_0_8_Test {
 
     @Test
     @LocalData
-    public void doesNotSkipZipalignFor_v2_0_8_builders() throws URISyntaxException, IOException {
+    void doesNotSkipZipalignFor_v2_0_8_builders() {
 
         FreeStyleProject job = (FreeStyleProject) testJenkins.jenkins.getItem(getClass().getSimpleName());
         DescribableList<Builder,?> builders = job.getBuildersList();
@@ -77,7 +80,7 @@ public class SignApksBuilderCompatibility_2_0_8_Test {
 
     @Test
     @LocalData
-    public void usesOldSignedApkMappingFor_v2_0_8_builders() throws Exception {
+    void usesOldSignedApkMappingFor_v2_0_8_builders() {
 
         FreeStyleProject job = (FreeStyleProject) testJenkins.jenkins.getItem(getClass().getSimpleName());
         DescribableList<Builder,?> builders = job.getBuildersList();
