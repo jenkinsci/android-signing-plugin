@@ -7,17 +7,15 @@ import com.cloudbees.plugins.credentials.common.StandardCertificateCredentials;
 import com.cloudbees.plugins.credentials.domains.Domain;
 import com.cloudbees.plugins.credentials.impl.CertificateCredentialsImpl;
 
-import org.junit.rules.TestRule;
-import org.junit.runner.Description;
-import org.junit.runners.model.Statement;
 import org.jvnet.hudson.test.JenkinsRule;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 
-public class TestKeyStore implements TestRule {
+public class TestKeyStore {
 
     public static final String KEY_STORE_RESOURCE = "/" + SignApksBuilderTest.class.getSimpleName() + ".p12";
     public static final String KEY_STORE_ID = SignApksBuilderTest.class.getSimpleName() + ".keyStore";
@@ -42,22 +40,6 @@ public class TestKeyStore implements TestRule {
         this.password = password;
     }
 
-    @Override
-    public Statement apply(Statement base, Description description) {
-        return new Statement() {
-            @Override
-            public void evaluate() throws Throwable {
-                addCredentials();
-                try {
-                    base.evaluate();
-                }
-                finally {
-                    removeCredentials();
-                }
-            }
-        };
-    }
-
     void addCredentials() {
         if (testJenkins.jenkins == null) {
             return;
@@ -66,7 +48,7 @@ public class TestKeyStore implements TestRule {
             InputStream keyStoreIn = SignApksBuilderTest.class.getResourceAsStream(resourceName);
             byte[] keyStoreBytes = new byte[keyStoreIn.available()];
             keyStoreIn.read(keyStoreBytes);
-            String keyStore = new String(Base64.getEncoder().encode(keyStoreBytes), "utf-8");
+            String keyStore = new String(Base64.getEncoder().encode(keyStoreBytes), StandardCharsets.UTF_8);
             credentials = new CertificateCredentialsImpl(
                 CredentialsScope.GLOBAL, credentialsId, description, password,
                 new CertificateCredentialsImpl.UploadedKeyStoreSource(keyStore));
@@ -91,4 +73,5 @@ public class TestKeyStore implements TestRule {
         }
         credentials = null;
     }
+
 }

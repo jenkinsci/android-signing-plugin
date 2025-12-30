@@ -38,10 +38,10 @@ class ApkArtifactIsSignedMatcher extends BaseMatcher<BuildArtifact> {
     @Override
     public boolean matches(Object item) {
         BuildArtifact actual = (BuildArtifact) item;
-        descText.append(actual.artifact.getFileName());
+        descText.append(actual.artifact().getFileName());
         try {
-            VirtualFile virtualSignedApk = actual.build.getArtifactManager().root().child(actual.artifact.relativePath);
-            FilePath signedApkPath = actual.build.getWorkspace().createTempFile(actual.artifact.getFileName().replace(".apk", ""), ".apk");
+            VirtualFile virtualSignedApk = actual.build().getArtifactManager().root().child(actual.artifact().relativePath);
+            FilePath signedApkPath = actual.build().getWorkspace().createTempFile(actual.artifact().getFileName().replace(".apk", ""), ".apk");
             signedApkPath.copyFrom(virtualSignedApk.open());
             VerifyApkCallable.VerifyResult result = signedApkPath.act(new VerifyApkCallable(TaskListener.NULL));
             if (!result.isVerified) {
@@ -67,7 +67,7 @@ class ApkArtifactIsSignedMatcher extends BaseMatcher<BuildArtifact> {
             throw new RuntimeException(e);
         }
 
-        return descText.length() == actual.artifact.getFileName().length();
+        return descText.length() == actual.artifact().getFileName().length();
     }
 
     @Override

@@ -9,21 +9,22 @@ import org.htmlunit.html.HtmlInput;
 import org.htmlunit.html.HtmlSelect;
 import org.htmlunit.html.HtmlOption;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.RuleChain;
-import org.junit.rules.TemporaryFolder;
-import org.junit.rules.TestName;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.io.TempDir;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.PretendSlave;
 import org.jvnet.hudson.test.WithoutJenkins;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.KeyStoreException;
 import java.security.UnrecoverableKeyException;
@@ -67,11 +68,11 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.CoreMatchers.startsWith;
+import static org.hamcrest.Matchers.emptyOrNullString;
+import static org.hamcrest.Matchers.emptyString;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.isEmptyOrNullString;
-import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static org.jenkinsci.plugins.androidsigning.ApkArtifactIsSignedMatcher.isSignedWith;
@@ -79,11 +80,13 @@ import static org.jenkinsci.plugins.androidsigning.TestKeyStore.KEY_ALIAS;
 import static org.jenkinsci.plugins.androidsigning.TestKeyStore.KEY_STORE_ID;
 import static org.jenkinsci.plugins.androidsigning.TestKeyStore.KEY_STORE_RESOURCE;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
 @SuppressWarnings("deprecation")
-public class SignApksBuilderTest {
+@WithJenkins
+class SignApksBuilderTest {
 
     public static class CustomToolTestWrapper extends BuildWrapper {
 
@@ -99,7 +102,7 @@ public class SignApksBuilderTest {
         }
 
         @Override
-        public Environment setUp(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
+        public Environment setUp(AbstractBuild build, Launcher launcher, BuildListener listener) {
             return new BuildWrapper.Environment() {
                 @Override
                 public void buildEnvVars(Map<String, String> env) {
@@ -146,24 +149,22 @@ public class SignApksBuilderTest {
     private FilePath androidHome = null;
     private FakeZipalign zipalignLauncher = null;
     private PretendSlave slave = null;
-    private JenkinsRule testJenkins = new JenkinsRule();
-    private TestKeyStore keyStoreRule = new TestKeyStore(testJenkins);
+    private JenkinsRule testJenkins;
+
+    private TestKeyStore testKeyStore;
     private EnvironmentVariablesNodeProperty androidHomeEnvProp = null;
 
-    @Rule
-    public RuleChain jenkinsChain = RuleChain.outerRule(testJenkins).around(keyStoreRule);
+    private String currentTestName;
+    
+    @TempDir
+    private File testDir;
 
-    @Rule
-    public TemporaryFolder testDir = new TemporaryFolder();
-
-    @Rule
-    public TestName currentTestName = new TestName();
-
-    @Before
-    public void setupEnvironment() throws Exception {
-        if (testJenkins.jenkins == null) {
-            return;
-        }
+    @BeforeEach
+    void beforeEach(JenkinsRule rule, TestInfo info) throws Exception {
+        testJenkins = rule;
+        testKeyStore = new TestKeyStore(testJenkins);
+        testKeyStore.addCredentials();
+        currentTestName = info.getTestMethod().orElseThrow().getName();
         androidHomeEnvProp = new EnvironmentVariablesNodeProperty();
         EnvVars envVars = androidHomeEnvProp.getEnvVars();
         URL androidHomeUrl = getClass().getResource("/android");
@@ -172,14 +173,19 @@ public class SignApksBuilderTest {
         envVars.put("ANDROID_HOME", androidHomePath);
         testJenkins.jenkins.getGlobalNodeProperties().add(androidHomeEnvProp);
 
-        // add a slave so i can use my fake launcher
+        // add a slave so I can use my fake launcher
         zipalignLauncher = new FakeZipalign();
         slave = testJenkins.createPretendSlave(zipalignLauncher);
         slave.setLabelString(slave.getLabelString() + " " + getClass().getSimpleName());
     }
 
+    @AfterEach
+    void afterEach() {
+        testKeyStore.removeCredentials();
+    }
+
     private FreeStyleProject createSignApkJob() throws IOException {
-        FreeStyleProject job = testJenkins.createFreeStyleProject(currentTestName.getMethodName());
+        FreeStyleProject job = testJenkins.createFreeStyleProject(currentTestName);
         job.getBuildWrappersList().add(new CopyTestWorkspace());
         job.setAssignedLabel(Label.get(getClass().getSimpleName()));
         return job;
@@ -187,7 +193,7 @@ public class SignApksBuilderTest {
 
     @Test
     @WithoutJenkins
-    public void setsEmptyStringsToNullForAndroidHomeAndZipalignPath() {
+    void setsEmptyStringsToNullForAndroidHomeAndZipalignPath() {
         SignApksBuilder builder = new SignApksBuilder();
 
         builder.setAndroidHome("");
@@ -202,11 +208,11 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void credentailsExist() {
+    void credentialsExist() {
         List<StandardCertificateCredentials> result = CredentialsProvider.lookupCredentials(
             StandardCertificateCredentials.class, testJenkins.jenkins, ACL.SYSTEM, Collections.emptyList());
         StandardCertificateCredentials credentials = CredentialsMatchers.firstOrNull(result, CredentialsMatchers.withId(KEY_STORE_ID));
-        assertThat(credentials, sameInstance(keyStoreRule.credentials));
+        assertThat(credentials, sameInstance(testKeyStore.credentials));
         try {
             assertTrue(credentials.getKeyStore().containsAlias(KEY_ALIAS));
         }
@@ -216,7 +222,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void archivesTheSignedApk() throws Exception {
+    void archivesTheSignedApk() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, KEY_ALIAS, "*-unsigned.apk")
             .archiveSignedApks(true).archiveUnsignedApk(false));
@@ -232,7 +238,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void archivesTheUnsignedApk() throws Exception {
+    void archivesTheUnsignedApk() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, KEY_ALIAS, "*-unsigned.apk")
             .archiveSignedApks(false).archiveUnsignedApk(true));
@@ -248,7 +254,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void archivesTheUnsignedAndSignedApks() throws Exception {
+    void archivesTheUnsignedAndSignedApks() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, KEY_ALIAS, "*-unsigned.apk")
             .archiveSignedApks(true).archiveUnsignedApk(true));
@@ -266,7 +272,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void archivesNothing() throws Exception {
+    void archivesNothing() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, getClass().getSimpleName(), "*-unsigned.apk")
             .archiveSignedApks(false).archiveUnsignedApk(false));
@@ -280,7 +286,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void signsTheApk() throws Exception {
+    void signsTheApk() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, KEY_ALIAS, "*-unsigned.apk")
             .archiveSignedApks(true).archiveUnsignedApk(false));
@@ -295,7 +301,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void supportsApksWithoutUnsignedSuffix() throws Exception {
+    void supportsApksWithoutUnsignedSuffix() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, KEY_ALIAS, "SignApksBuilderTest.apk")
             .archiveSignedApks(true).archiveUnsignedApk(true));
@@ -314,7 +320,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void signsAllMatchingApks() throws Exception {
+    void signsAllMatchingApks() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, KEY_ALIAS, "SignApksBuilderTest-*.apk")
             .archiveSignedApks(true).archiveUnsignedApk(true));
@@ -331,7 +337,6 @@ public class SignApksBuilderTest {
             hasProperty("fileName", endsWith("SignApksBuilderTest-unsigned.apk")),
             hasProperty("fileName", endsWith("SignApksBuilderTest-signed.apk"))));
 
-        //noinspection Duplicates
         artifacts.forEach(artifact -> {
             try {
                 if (!artifact.getFileName().endsWith("-signed.apk")) {
@@ -346,7 +351,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void multipleBuildersDoNotOverwriteArtifacts() throws Exception {
+    void multipleBuildersDoNotOverwriteArtifacts() throws Exception {
         SignApksBuilder builder1 = new SignApksBuilder();
         builder1.setKeyStoreId(KEY_STORE_ID);
         builder1.setKeyAlias(KEY_ALIAS);
@@ -393,7 +398,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void writesSignedApkToUnsignedApkSibling() throws Exception {
+    void writesSignedApkToUnsignedApkSibling() throws Exception {
         SignApksBuilder builder = new SignApksBuilder();
         builder.setKeyStoreId(KEY_STORE_ID);
         builder.setKeyAlias(KEY_ALIAS);
@@ -417,7 +422,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void supportsMultipleApkGlobs() throws Exception {
+    void supportsMultipleApkGlobs() throws Exception {
         SignApksBuilder builder = new SignApksBuilder();
         builder.setKeyStoreId(KEY_STORE_ID);
         builder.setKeyAlias(KEY_ALIAS);
@@ -434,7 +439,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void doesNotMatchTheSameApkMoreThanOnce() throws Exception {
+    void doesNotMatchTheSameApkMoreThanOnce() throws Exception {
         SignApksBuilder builder = new SignApksBuilder();
         builder.setKeyStoreId(KEY_STORE_ID);
         builder.setKeyAlias(KEY_ALIAS);
@@ -451,7 +456,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void usesAndroidHomeOverride() throws Exception {
+    void usesAndroidHomeOverride() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, getClass().getSimpleName(), "*-unsigned.apk")
             .archiveSignedApks(true).archiveUnsignedApk(false));
@@ -467,7 +472,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void usesZipalignPathOverride() throws Exception {
+    void usesZipalignPathOverride() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, KEY_ALIAS, "*-unsigned.apk")
             .archiveSignedApks(true).archiveUnsignedApk(false));
@@ -483,11 +488,11 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void retrievesEnvVarsFromDecoratedLauncherForZipalignCommand() throws Exception {
+    void retrievesEnvVarsFromDecoratedLauncherForZipalignCommand() throws Exception {
 
         testJenkins.jenkins.getGlobalNodeProperties().remove(androidHomeEnvProp);
 
-        FilePath decoratedZipalign = new FilePath(testDir.newFolder("decorated")).child("zipalign");
+        FilePath decoratedZipalign = new FilePath(newFolder(testDir, "decorated")).child("zipalign");
         decoratedZipalign.getParent().mkdirs();
         decoratedZipalign.touch(0);
 
@@ -513,11 +518,10 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void abortsIfZipalignIsNotFound() throws Exception {
+    void abortsIfZipalignIsNotFound() throws Exception {
 
         for (NodeProperty property : testJenkins.jenkins.getGlobalNodeProperties()) {
-            if (property instanceof EnvironmentVariablesNodeProperty) {
-                EnvironmentVariablesNodeProperty envProp = (EnvironmentVariablesNodeProperty)property;
+            if (property instanceof EnvironmentVariablesNodeProperty envProp) {
                 envProp.getEnvVars().override("ANDROID_HOME", "/null_android");
             }
         }
@@ -533,7 +537,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void skipsZipalign() throws Exception {
+    void skipsZipalign() throws Exception {
         SignApksBuilder builder = new SignApksBuilder();
         builder.setApksToSign("*-unsigned.apk");
         builder.setKeyStoreId(KEY_STORE_ID);
@@ -547,7 +551,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void identitySubmission() throws Exception {
+    void identitySubmission() throws Exception {
         SignApksBuilder original = new SignApksBuilder();
         original.setKeyStoreId(KEY_STORE_ID);
         original.setKeyAlias(KEY_ALIAS);
@@ -581,7 +585,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void identitySubmissionWithSingleOldSigningEntry() throws Exception {
+    void identitySubmissionWithSingleOldSigningEntry() throws Exception {
         Apk entry = new Apk(KEY_STORE_ID, KEY_ALIAS, "**/*-unsigned.apk")
             .archiveSignedApks(true).archiveUnsignedApk(false);
         SignApksBuilder original = new SignApksBuilder(Collections.singletonList(entry));
@@ -609,7 +613,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void descriptorProvidesKeyStoreFillMethod() throws Exception {
+    void descriptorProvidesKeyStoreFillMethod() throws Exception {
 
         SignApksBuilder original = new SignApksBuilder();
         original.setKeyStoreId(KEY_STORE_ID);
@@ -628,7 +632,7 @@ public class SignApksBuilderTest {
         HtmlSelect keyStoreSelect = form.getSelectByName("_.keyStoreId");
         String fillUrl = keyStoreSelect.getAttribute("fillUrl");
 
-        assertThat(fillUrl, not(isEmptyOrNullString()));
+        assertThat(fillUrl, not(emptyOrNullString()));
 
         HtmlOption option = keyStoreSelect.getOptionByValue(KEY_STORE_ID);
 
@@ -637,7 +641,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void savesTheKeyStoreIdWithMultipleKeyStoresPresent() throws Exception {
+    void savesTheKeyStoreIdWithMultipleKeyStoresPresent() throws Exception {
         TestKeyStore otherKey = new TestKeyStore(testJenkins, KEY_STORE_RESOURCE, "otherKey", null, getClass().getSimpleName());
         otherKey.addCredentials();
 
@@ -658,7 +662,7 @@ public class SignApksBuilderTest {
         HtmlSelect keyStoreSelect = form.getSelectByName("_.keyStoreId");
         String fillUrl = keyStoreSelect.getAttribute("fillUrl");
 
-        assertThat(fillUrl, not(isEmptyOrNullString()));
+        assertThat(fillUrl, not(emptyOrNullString()));
 
         HtmlOption option1 = keyStoreSelect.getOptionByValue(KEY_STORE_ID);
         HtmlOption option2 = keyStoreSelect.getOptionByValue(otherKey.credentialsId);
@@ -684,16 +688,18 @@ public class SignApksBuilderTest {
         otherKey.removeCredentials();
     }
 
-    @Test(expected = UnsupportedOperationException.class)
-    public void doesNotSupportMultipleEntriesAnyMore() {
+    @Test
+    void doesNotSupportMultipleEntriesAnyMore() {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, KEY_ALIAS, "ignore_me_1/**"));
         entries.add(new Apk(KEY_STORE_ID, KEY_ALIAS, "ignore_me_2/**"));
-        SignApksBuilder builder = new SignApksBuilder(entries);
+        assertThrows(UnsupportedOperationException.class, () -> {
+            SignApksBuilder builder = new SignApksBuilder(entries);
+        });
     }
 
     @Test
-    public void validatesAllApksToSignGlobs() throws Exception {
+    void validatesAllApksToSignGlobs() throws Exception {
 
         FreeStyleProject job = createSignApkJob();
 
@@ -709,7 +715,7 @@ public class SignApksBuilderTest {
         Build build = testJenkins.buildAndAssertSuccess(job);
         SignApksBuilder.SignApksDescriptor desc = (SignApksBuilder.SignApksDescriptor) testJenkins.jenkins.getDescriptor(SignApksBuilder.class);
         String jobUrl = job.getUrl();
-        String checkUrl = jobUrl + "/" + desc.getDescriptorUrl() + "/checkApksToSign?value=" + URLEncoder.encode("**/*-unsigned.apk, no_match-*.apk", "utf-8");
+        String checkUrl = jobUrl + "/" + desc.getDescriptorUrl() + "/checkApksToSign?value=" + URLEncoder.encode("**/*-unsigned.apk, no_match-*.apk", StandardCharsets.UTF_8);
         JenkinsRule.WebClient browser = testJenkins.createWebClient();
         String pageText = browser.goTo(checkUrl).getWebResponse().getContentAsString();
 
@@ -727,7 +733,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void usesKeyStoreIdIfDescriptionIsNotPresent() throws Exception {
+    void usesKeyStoreIdIfDescriptionIsNotPresent() throws Exception {
 
         TestKeyStore otherKey = new TestKeyStore(testJenkins, KEY_STORE_RESOURCE, "otherKey", null, getClass().getSimpleName());
         otherKey.addCredentials();
@@ -743,7 +749,7 @@ public class SignApksBuilderTest {
         HtmlSelect keyStoreSelect = form.getSelectByName("_.keyStoreId");
         String fillUrl = keyStoreSelect.getAttribute("fillUrl");
 
-        assertThat(fillUrl, not(isEmptyOrNullString()));
+        assertThat(fillUrl, not(emptyOrNullString()));
 
         HtmlOption option1 = keyStoreSelect.getOptionByValue(KEY_STORE_ID);
         HtmlOption option2 = keyStoreSelect.getOptionByValue(otherKey.credentialsId);
@@ -753,7 +759,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void usesSingletonKeyEntryWhenAliasIsNullOrEmptyString() throws Exception {
+    void usesSingletonKeyEntryWhenAliasIsNullOrEmptyString() throws Exception {
 
         SignApksBuilder builder = new SignApksBuilder();
         builder.setKeyStoreId(KEY_STORE_ID);
@@ -778,7 +784,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void givesMeaningfulErrorWhenKeyStoreDoesNotContainAlias() throws Exception {
+    void givesMeaningfulErrorWhenKeyStoreDoesNotContainAlias() throws Exception {
 
         SignApksBuilder builder = new SignApksBuilder();
         builder.setKeyStoreId(KEY_STORE_ID);
@@ -796,7 +802,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void supportsMultipleKeysInKeySotre() throws Exception {
+    void supportsMultipleKeysInKeyStore() throws Exception {
 
         TestKeyStore multiKeyStore = new TestKeyStore(testJenkins,
             "/SignApksBuilderTestMulti.p12", "multiKey", null, "SignApksBuilderTest");
@@ -827,7 +833,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void failsWhenAliasIsNullAndMultipleKeysArePresent() throws Exception {
+    void failsWhenAliasIsNullAndMultipleKeysArePresent() throws Exception {
 
         TestKeyStore multiKeyStore = new TestKeyStore(testJenkins,
             "/SignApksBuilderTestMulti.p12", "multiKey", null, "SignApksBuilderTest");
@@ -846,7 +852,7 @@ public class SignApksBuilderTest {
     }
 
     @Test
-    public void keyAliasIsEmptyStringNotNullWhenKeyAliasFieldIsBlank() throws Exception {
+    void keyAliasIsEmptyStringNotNullWhenKeyAliasFieldIsBlank() throws Exception {
 
         SignApksBuilder original = new SignApksBuilder();
         original.setKeyStoreId(KEY_STORE_ID);
@@ -862,7 +868,7 @@ public class SignApksBuilderTest {
         HtmlInput keyAliasInput = form.getInputByName("_.keyAlias");
         String aliasFromForm = keyAliasInput.getValueAttribute();
 
-        assertThat(aliasFromForm, isEmptyString());
+        assertThat(aliasFromForm, emptyString());
 
         testJenkins.submit(form);
         configPage = browser.getPage(job, "configure");
@@ -870,11 +876,20 @@ public class SignApksBuilderTest {
         keyAliasInput = form.getInputByName("_.keyAlias");
         aliasFromForm = keyAliasInput.getValueAttribute();
 
-        assertThat(aliasFromForm, isEmptyString());
+        assertThat(aliasFromForm, emptyString());
 
         job = testJenkins.jenkins.getItemByFullName(job.getFullName(), FreeStyleProject.class);
         original = (SignApksBuilder) job.getBuildersList().get(0);
 
-        assertThat(original.getKeyAlias(), isEmptyString());
+        assertThat(original.getKeyAlias(), emptyString());
+    }
+
+    private static File newFolder(File root, String... subDirs) throws IOException {
+        String subFolder = String.join("/", subDirs);
+        File result = new File(root, subFolder);
+        if (!result.mkdirs()) {
+            throw new IOException("Couldn't create folders " + root);
+        }
+        return result;
     }
 }

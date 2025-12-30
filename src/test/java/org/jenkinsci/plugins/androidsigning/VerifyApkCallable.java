@@ -1,19 +1,15 @@
 package org.jenkinsci.plugins.androidsigning;
 
-import com.android.apksig.ApkSigner;
 import com.android.apksig.ApkVerifier;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serial;
 import java.io.Serializable;
-import java.security.PrivateKey;
-import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-import hudson.AbortException;
 import hudson.model.TaskListener;
 import hudson.remoting.VirtualChannel;
 import jenkins.MasterToSlaveFileCallable;
@@ -21,16 +17,17 @@ import jenkins.MasterToSlaveFileCallable;
 
 class VerifyApkCallable extends MasterToSlaveFileCallable<VerifyApkCallable.VerifyResult> {
 
+    @Serial
     private static final long serialVersionUID = 1;
 
     public static class VerifyResult implements Serializable {
 
-        boolean isVerified;
-        boolean isVerifiedV1Scheme;
-        boolean isVerifiedV2Scheme;
-        boolean isVerifiedV3Scheme;
-        boolean containsErrors;
-        X509Certificate[] certs;
+        final boolean isVerified;
+        final boolean isVerifiedV1Scheme;
+        final boolean isVerifiedV2Scheme;
+        final boolean isVerifiedV3Scheme;
+        final boolean containsErrors;
+        final X509Certificate[] certs;
         String[] warnings = new String[0];
         String[] errors = new String[0];
 
@@ -62,7 +59,7 @@ class VerifyApkCallable extends MasterToSlaveFileCallable<VerifyApkCallable.Veri
     }
 
     @Override
-    public VerifyResult invoke(File inputApkFile, VirtualChannel channel) throws IOException, InterruptedException {
+    public VerifyResult invoke(File inputApkFile, VirtualChannel channel) throws IOException {
 
         ApkVerifier verifier = new ApkVerifier.Builder(inputApkFile).build();
         try {

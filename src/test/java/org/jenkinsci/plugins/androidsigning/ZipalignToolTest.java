@@ -1,7 +1,7 @@
 package org.jenkinsci.plugins.androidsigning;
 
 import static org.hamcrest.CoreMatchers.startsWith;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.File;
 import java.io.IOException;
@@ -9,11 +9,9 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.Charset;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import hudson.EnvVars;
 import hudson.FilePath;
 import hudson.Launcher;
@@ -24,19 +22,19 @@ import hudson.util.ArgumentListBuilder;
 import java.io.ByteArrayOutputStream;
 
 
-public class ZipalignToolTest {
+class ZipalignToolTest {
 
-    FilePath workspace;
-    FilePath androidHome;
-    FilePath androidHomeZipalign;
-    FilePath altZipalign;
+    private FilePath workspace;
+    private FilePath androidHome;
+    private FilePath androidHomeZipalign;
+    private FilePath altZipalign;
 
-    @Rule
-    public TemporaryFolder tempDir = new TemporaryFolder();
+    @TempDir
+    private File tempDir;
 
-    @Before
-    public void copyWorkspace() throws Exception {
-        FilePath tempDirPath = new FilePath(tempDir.getRoot());
+    @BeforeEach
+    void beforeEach() throws Exception {
+        FilePath tempDirPath = new FilePath(tempDir);
 
         URL workspaceUrl = getClass().getResource("/workspace");
         FilePath workspace = new FilePath(new File(workspaceUrl.toURI()));
@@ -57,7 +55,7 @@ public class ZipalignToolTest {
     }
 
     @Test
-    public void findsZipalignInAndroidHomeEnvVar() throws Exception {
+    void findsZipalignInAndroidHomeEnvVar() throws Exception {
         EnvVars envVars = new EnvVars();
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
@@ -71,7 +69,7 @@ public class ZipalignToolTest {
     }
 
     @Test
-    public void findsZipalignInAndroidZipalignEnvVar() throws Exception {
+    void findsZipalignInAndroidZipalignEnvVar() throws Exception {
         EnvVars envVars = new EnvVars();
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
@@ -85,7 +83,7 @@ public class ZipalignToolTest {
     }
 
     @Test
-    public void findsZipalignInPathEnvVarWithToolsDir() throws Exception {
+    void findsZipalignInPathEnvVarWithToolsDir() throws Exception {
         FilePath toolsDir = androidHome.child("tools");
         toolsDir.mkdirs();
         FilePath androidTool = toolsDir.child("android");
@@ -129,7 +127,7 @@ public class ZipalignToolTest {
     }
 
     @Test
-    public void findsZipalignInPathEnvVarWithToolsBinDir() throws Exception {
+    void findsZipalignInPathEnvVarWithToolsBinDir() throws Exception {
         FilePath toolsBinDir = androidHome.child("tools").child("bin");
         toolsBinDir.mkdirs();
         FilePath sdkmanagerTool = toolsBinDir.child("sdkmanager");
@@ -171,9 +169,9 @@ public class ZipalignToolTest {
 
         assertThat(cmd.toString(), startsWith(androidHomeZipalign.getRemote()));
     }
-    
+
     @Test
-    public void findsZipalignInPathEnvVarWithZipalignParentDir() throws Exception {
+    void findsZipalignInPathEnvVarWithZipalignParentDir() throws Exception {
         FilePath zipalignDir = altZipalign.getParent();
 
         EnvVars envVars = new EnvVars();
@@ -214,7 +212,7 @@ public class ZipalignToolTest {
     }
 
     @Test
-    public void androidZiplignOverridesAndroidHome() throws Exception {
+    void androidZiplignOverridesAndroidHome() throws Exception {
         EnvVars envVars = new EnvVars();
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
@@ -229,7 +227,7 @@ public class ZipalignToolTest {
     }
 
     @Test
-    public void usesLatestZipalignFromAndroidHome() throws IOException, InterruptedException {
+    void usesLatestZipalignFromAndroidHome() throws IOException, InterruptedException {
         FilePath newerBuildTools = androidHome.child("build-tools").child("1.1");
         newerBuildTools.mkdirs();
         FilePath newerZipalign = newerBuildTools.child("zipalign");
@@ -250,7 +248,7 @@ public class ZipalignToolTest {
     }
 
     @Test
-    public void explicitAndroidHomeOverridesEnvVars() throws Exception {
+    void explicitAndroidHomeOverridesEnvVars() throws Exception {
         EnvVars envVars = new EnvVars();
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
@@ -271,7 +269,7 @@ public class ZipalignToolTest {
     }
 
     @Test
-    public void explicitZipalignOverridesEnvZipaligns() throws IOException, InterruptedException {
+    void explicitZipalignOverridesEnvZipaligns() throws IOException, InterruptedException {
         EnvVars envVars = new EnvVars();
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
@@ -291,7 +289,7 @@ public class ZipalignToolTest {
     }
 
     @Test
-    public void explicitZipalignOverridesEverything() throws Exception {
+    void explicitZipalignOverridesEverything() throws Exception {
         EnvVars envVars = new EnvVars();
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
@@ -316,7 +314,7 @@ public class ZipalignToolTest {
     }
 
     @Test
-    public void triesWindowsExeIfEnvAndroidHomeZipalignDoesNotExist() throws IOException, InterruptedException, URISyntaxException {
+    void triesWindowsExeIfEnvAndroidHomeZipalignDoesNotExist() throws IOException, URISyntaxException {
         URL androidHomeUrl = getClass().getResource("/win-android");
         FilePath winAndroidHome = new FilePath(new File(androidHomeUrl.toURI()));
         FilePath winAndroidHomeZipalign = winAndroidHome.child("build-tools").child("1.0").child("zipalign.exe");
@@ -334,7 +332,7 @@ public class ZipalignToolTest {
     }
 
     @Test
-    public void triesWindowsExeIfEnvZipalignDoesNotExist() throws Exception {
+    void triesWindowsExeIfEnvZipalignDoesNotExist() throws Exception {
         URL androidHomeUrl = getClass().getResource("/win-android");
         FilePath winAndroidHome = new FilePath(new File(androidHomeUrl.toURI()));
         FilePath suffixedZipalign = winAndroidHome.child("build-tools").child("1.0").child("zipalign.exe");
@@ -353,7 +351,7 @@ public class ZipalignToolTest {
     }
 
     @Test
-    public void triesWindowsExeIfExplicitAndroidHomeZipalignDoesNotExist() throws Exception {
+    void triesWindowsExeIfExplicitAndroidHomeZipalignDoesNotExist() throws Exception {
         URL androidHomeUrl = getClass().getResource("/win-android");
         FilePath winAndroidHome = new FilePath(new File(androidHomeUrl.toURI()));
         FilePath winAndroidHomeZipalign = winAndroidHome.child("build-tools").child("1.0").child("zipalign.exe");
@@ -370,7 +368,7 @@ public class ZipalignToolTest {
     }
 
     @Test
-    public void triesWindowsExeIfExplicitZipalignDoesNotExist() throws Exception {
+    void triesWindowsExeIfExplicitZipalignDoesNotExist() throws Exception {
         URL androidHomeUrl = getClass().getResource("/win-android");
         FilePath winAndroidHome = new FilePath(new File(androidHomeUrl.toURI()));
         FilePath suffixedZipalign = winAndroidHome.child("build-tools").child("1.0").child("zipalign.exe");
@@ -388,7 +386,7 @@ public class ZipalignToolTest {
     }
 
     @Test
-    public void resolvesVariableReferencesInExplicitParameters() throws Exception {
+    void resolvesVariableReferencesInExplicitParameters() throws Exception {
         EnvVars env = new EnvVars();
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         TaskListener taskListener = new StreamBuildListener(bytes, Charset.defaultCharset());
@@ -409,7 +407,7 @@ public class ZipalignToolTest {
     }
 
     @Test
-    public void findsWindowsZipalignFromEnvPath() throws Exception {
+    void findsWindowsZipalignFromEnvPath() throws Exception {
         URL url = getClass().getResource("/win-android");
         FilePath winAndroidHome = new FilePath(new File(url.toURI()));
         EnvVars env = new EnvVars();
