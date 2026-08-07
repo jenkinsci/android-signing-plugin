@@ -2,7 +2,6 @@ package org.jenkinsci.plugins.androidsigning;
 
 import com.google.inject.Inject;
 
-import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepDescriptorImpl;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepImpl;
 import org.jenkinsci.plugins.workflow.steps.AbstractSynchronousNonBlockingStepExecution;
@@ -20,6 +19,7 @@ import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import hudson.Util;
 
 
 public class SignApksStep extends AbstractStepImpl {
@@ -153,11 +153,11 @@ public class SignApksStep extends AbstractStepImpl {
         protected Void run() throws Exception {
             String androidHome = step.getAndroidHome();
             String zipalignPath = step.getZipalignPath();
-            if (StringUtils.isEmpty(androidHome) && StringUtils.isEmpty(zipalignPath)) {
-                if (StringUtils.isEmpty(androidHome)) {
+            if (Util.fixEmpty(androidHome) == null && Util.fixEmpty(zipalignPath) == null) {
+                if (Util.fixEmpty(androidHome) == null) {
                     androidHome = env.get(ZipalignTool.ENV_ANDROID_HOME);
                 }
-                if (StringUtils.isEmpty(zipalignPath)) {
+                if (Util.fixEmpty(zipalignPath) == null) {
                     zipalignPath = env.get(ZipalignTool.ENV_ZIPALIGN_PATH);
                 }
             }

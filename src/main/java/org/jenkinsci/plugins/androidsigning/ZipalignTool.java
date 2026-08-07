@@ -1,6 +1,5 @@
 package org.jenkinsci.plugins.androidsigning;
 
-import org.apache.commons.lang.StringUtils;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -22,6 +21,7 @@ import hudson.FilePath;
 import hudson.Launcher;
 import hudson.util.ArgumentListBuilder;
 import hudson.util.VersionNumber;
+import hudson.Util;
 
 
 class ZipalignTool {
@@ -33,7 +33,7 @@ class ZipalignTool {
     private FilePath findFromEnv(EnvVars env, FilePath workspace, PrintStream logger) throws AbortException {
 
         String zipalignPath = env.get(ENV_ZIPALIGN_PATH);
-        if (!StringUtils.isEmpty(zipalignPath)) {
+        if (Util.fixEmpty(zipalignPath) != null) {
             zipalignPath = env.expand(zipalignPath);
             logger.printf("[SignApksBuilder] found zipalign path in env %s=%s%n", ENV_ZIPALIGN_PATH, zipalignPath);
             FilePath zipalign = new FilePath(workspace.getChannel(), zipalignPath);
@@ -41,14 +41,14 @@ class ZipalignTool {
         }
 
         String androidHome = env.get(ENV_ANDROID_HOME);
-        if (!StringUtils.isEmpty(androidHome)) {
+        if (Util.fixEmpty(androidHome) != null) {
             androidHome = env.expand(androidHome);
             logger.printf("[SignApksBuilder] searching environment variable %s=%s for zipalign...%n", ENV_ANDROID_HOME, androidHome);
             return findInAndroidHome(androidHome, workspace, logger);
         }
 
         String envPath = env.get(ENV_PATH);
-        if (!StringUtils.isEmpty(envPath)) {
+        if (Util.fixEmpty(envPath) != null) {
             envPath = env.expand(envPath);
             logger.printf("[SignApksBuilder] searching environment %s=%s for zipalign...%n", ENV_PATH, envPath);
             return findInPathEnvVar(envPath, workspace, logger);
@@ -339,11 +339,11 @@ class ZipalignTool {
 
     ArgumentListBuilder commandFor(String unsignedApk, String outputApk) throws AbortException {
         if (zipalign == null) {
-            if (!StringUtils.isEmpty(overrideZipalignPath)) {
+            if (Util.fixEmpty(overrideZipalignPath) != null) {
                 logger.printf("[SignApksBuilder] zipalign path explicitly set to %s%n", overrideZipalignPath);
                 zipalign = zipalignOrZipalignExe(workspace.child(buildEnv.expand(overrideZipalignPath)), logger);
             }
-            else if (!StringUtils.isEmpty(overrideAndroidHome)) {
+            else if (Util.fixEmpty(overrideAndroidHome) != null) {
                 logger.printf("[SignApksBuilder] zipalign %s explicitly set to %s%n", ENV_ANDROID_HOME, overrideAndroidHome);
                 String expandedAndroidHome = buildEnv.expand(overrideAndroidHome);
                 zipalign = findInAndroidHome(expandedAndroidHome, workspace, this.logger);
