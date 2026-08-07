@@ -3,8 +3,8 @@ package org.jenkinsci.plugins.androidsigning;
 
 import com.cloudbees.plugins.credentials.common.StandardCertificateCredentials;
 
-import org.apache.commons.lang.StringUtils;
 
+import hudson.Util;
 import java.io.Serializable;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
@@ -22,7 +22,7 @@ public class SigningComponents implements Serializable {
                                                         justification="getEntry can generate this exeception")
     public static SigningComponents fromCredentials(StandardCertificateCredentials creds, String keyAlias) throws GeneralSecurityException {
         KeyStore keyStore = creds.getKeyStore();
-        if (StringUtils.isEmpty(keyAlias)) {
+        if (Util.fixEmpty(keyAlias) == null) {
             keyAlias = null;
             Enumeration<String> aliases = keyStore.aliases();
             if (aliases != null) {
@@ -55,7 +55,7 @@ public class SigningComponents implements Serializable {
             // empty passwords could be pessimistically handled, but this way if Credentials Plugin
             // changes to load key stores (CertificateCredentialsImpl) with empty password instead
             // of null, this should still work
-            if (StringUtils.isEmpty(password)) {
+            if (Util.fixEmpty(password) == null) {
                 throw new NullKeyStorePasswordException(
                     "the password for key store credential " + creds.getId() + " is null - use the Credentials Plugin to configure a non-empty password", e);
             }

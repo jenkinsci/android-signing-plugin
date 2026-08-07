@@ -18,7 +18,6 @@ import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardCertificateCredentials;
 import com.cloudbees.plugins.credentials.domains.DomainRequirement;
 
-import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -69,6 +68,7 @@ import jenkins.MasterToSlaveFileCallable;
 import jenkins.model.Jenkins;
 import jenkins.tasks.SimpleBuildStep;
 import jenkins.util.BuildListenerAdapter;
+import hudson.Util;
 
 public class SignApksBuilder extends Builder implements SimpleBuildStep {
 
@@ -160,7 +160,7 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
 
     @DataBoundSetter
     public void setAndroidHome(String x) {
-        androidHome = StringUtils.stripToNull(x);
+        androidHome = Util.fixEmptyAndTrim(x);
     }
 
     public String getAndroidHome() {
@@ -169,7 +169,7 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
 
     @DataBoundSetter
     public void setZipalignPath(String x) {
-        zipalignPath = StringUtils.stripToNull(x);
+        zipalignPath = Util.fixEmptyAndTrim(x);
     }
 
     public String getZipalignPath() {
@@ -425,7 +425,7 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
             for (StandardCertificateCredentials key : keys) {
                 String id = key.getId();
                 String label = key.getDescription();
-                if (StringUtils.isEmpty(label)) {
+                if (Util.fixEmpty(label) == null) {
                     label = id;
                 }
                 items.add(label, id);
