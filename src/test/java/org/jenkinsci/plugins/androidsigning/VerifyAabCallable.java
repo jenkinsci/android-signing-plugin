@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.jar.Manifest;
 
 import hudson.remoting.VirtualChannel;
 import jenkins.MasterToSlaveFileCallable;
@@ -28,6 +29,7 @@ class VerifyAabCallable extends MasterToSlaveFileCallable<VerifyAabCallable.Veri
 
         boolean isSigned;
         X509Certificate[] certs = new X509Certificate[0];
+        String digestAlgorithm;
 
     }
 
@@ -41,7 +43,20 @@ class VerifyAabCallable extends MasterToSlaveFileCallable<VerifyAabCallable.Veri
             Enumeration<JarEntry> entries = jar.entries();
             while (entries.hasMoreElements()) {
                 JarEntry entry = entries.nextElement();
-                if (entry.getName().startsWith("META-INF/")) {
+                String name = entry.getName();
+                if (name.startsWith("META-INF/")) {
+                    if (name.endsWith(".SF")) {
+                        try (InputStream sfIn = jar.getInputStream(entry)) {
+                            Manifest sf = new Manifest(sfIn);
+                            for (Object key : sf.getMainAttributes().keySet()) {
+                                String keyName = key.toString();
+                                if (keyName.endsWith("-Digest-Manifest")) {
+                                    result.digestAlgorithm = keyName.substring(0, keyName.length() - "-Digest-Manifest".length());
+                                    break;
+                                }
+                            }
+                        }
+                    }
                     continue;
                 }
                 // drain the entry to trigger signature verification
