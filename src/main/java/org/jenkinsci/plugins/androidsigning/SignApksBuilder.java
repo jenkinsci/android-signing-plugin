@@ -26,12 +26,16 @@ import org.kohsuke.stapler.QueryParameter;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
 import java.security.GeneralSecurityException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.cert.CertPath;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,9 +43,13 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.zip.ZipFile;
+
+import jdk.security.jarsigner.JarSigner;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
 
@@ -104,6 +112,7 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
     private String keyStoreId;
     private String keyAlias;
     private String apksToSign;
+    private String aabsToSign;
     private SignedApkMappingStrategy signedApkMapping;
     private boolean archiveSignedApks = true;
     private boolean archiveUnsignedApks = false;
@@ -201,6 +210,15 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
 
     public String getApksToSign() {
         return apksToSign;
+    }
+
+    @DataBoundSetter
+    public void setAabsToSign(String aabsToSign) {
+        this.aabsToSign = aabsToSign;
+    }
+
+    public String getAabsToSign() {
+        return aabsToSign;
     }
 
     @DataBoundSetter
@@ -302,76 +320,120 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
             throw new AbortException(message);
         }
 
-        Set<FilePath> matchedApks = new TreeSet<>(Comparator.comparing(FilePath::getRemote));
-        String[] globs = getSelectionGlobs(getApksToSign());
-        for (String glob : globs) {
-            FilePath[] globMatch = workspace.list(glob, builderDir.getName() + "/**");
-            if (globMatch.length == 0) {
-                throw new AbortException("No APKs in workspace matching " + glob);
-            }
-            matchedApks.addAll(Arrays.asList(globMatch));
-        }
-
         final String archivePrefix = BUILDER_DIR + "/" + getKeyStoreId() + "/" + getKeyAlias() + "/";
 
         if (signedApkMapping == null) {
             signedApkMapping = new SignedApkMappingStrategy.UnsignedApkSiblingMapping();
         }
 
-        for (FilePath unsignedApk : matchedApks) {
-            unsignedApk = unsignedApk.absolutize();
-
-            FilePath alignedApk = zipalignDir.createTempFile("aligned-" + unsignedApk.getBaseName() + "-", ".apk");
-            FilePath signedApk = signedApkMapping.destinationForUnsignedApk(unsignedApk, workspace);
-
-            if (skipZipalign) {
-                listener.getLogger().printf("[SignApksBuilder] skipping zipalign for unsigned apk %s", unsignedApk);
-                alignedApk = unsignedApk;
+        if (Util.fixEmptyAndTrim(getApksToSign()) != null) {
+            Set<FilePath> matchedApks = new TreeSet<>(Comparator.comparing(FilePath::getRemote));
+            String[] globs = getSelectionGlobs(getApksToSign());
+            for (String glob : globs) {
+                FilePath[] globMatch = workspace.list(glob, builderDir.getName() + "/**");
+                if (globMatch.length == 0) {
+                    throw new AbortException("No APKs in workspace matching " + glob);
+                }
+                matchedApks.addAll(Arrays.asList(globMatch));
             }
-            else {
-                ArgumentListBuilder zipalignCommand = zipalign.commandFor(unsignedApk.getRemote(), alignedApk.getRemote());
-                listener.getLogger().printf("[SignApksBuilder] %s%n", zipalignCommand);
-                int zipalignResult = launcher.launch()
-                    .cmds(zipalignCommand)
-                    .pwd(workspace)
-                    .stdout(listener)
-                    .stderr(listener.getLogger())
-                    .join();
 
-                if (zipalignResult != 0) {
-                    listener.fatalError("[SignApksBuilder] zipalign failed: exit code %d", zipalignResult);
-                    throw new AbortException(String.format("zipalign failed on APK %s: exit code %d", unsignedApk, zipalignResult));
+            for (FilePath unsignedApk : matchedApks) {
+                unsignedApk = unsignedApk.absolutize();
+
+                FilePath alignedApk = zipalignDir.createTempFile("aligned-" + unsignedApk.getBaseName() + "-", ".apk");
+                FilePath signedApk = signedApkMapping.destinationForUnsignedApk(unsignedApk, workspace);
+
+                if (skipZipalign) {
+                    listener.getLogger().printf("[SignApksBuilder] skipping zipalign for unsigned apk %s", unsignedApk);
+                    alignedApk = unsignedApk;
+                }
+                else {
+                    ArgumentListBuilder zipalignCommand = zipalign.commandFor(unsignedApk.getRemote(), alignedApk.getRemote());
+                    listener.getLogger().printf("[SignApksBuilder] %s%n", zipalignCommand);
+                    int zipalignResult = launcher.launch()
+                        .cmds(zipalignCommand)
+                        .pwd(workspace)
+                        .stdout(listener)
+                        .stderr(listener.getLogger())
+                        .join();
+
+                    if (zipalignResult != 0) {
+                        listener.fatalError("[SignApksBuilder] zipalign failed: exit code %d", zipalignResult);
+                        throw new AbortException(String.format("zipalign failed on APK %s: exit code %d", unsignedApk, zipalignResult));
+                    }
+                }
+
+                String alignedRelName = relativeToWorkspace(workspace, alignedApk);
+                String signedRelName = relativeToWorkspace(workspace, signedApk);
+
+                if (!alignedApk.exists()) {
+                    throw new AbortException(String.format("aligned APK does not exist: %s", alignedRelName));
+                }
+
+                listener.getLogger().printf("[SignApksBuilder] signing APK %s%n", alignedRelName);
+
+                FilePath signedParent = signedApk.getParent();
+                if (signedParent == null) {
+                    continue;
+                }
+                if (!signedParent.exists()) {
+                    signedParent.mkdirs();
+                }
+                SignApkCallable signApk = new SignApkCallable(signingParams.key, signingParams.certChain, signingParams.v1SigName, signedApk.getRemote(), listener);
+                alignedApk.act(signApk);
+
+                listener.getLogger().printf("[SignApksBuilder] signed APK %s%n", signedRelName);
+
+                if (getArchiveUnsignedApks()) {
+                    listener.getLogger().printf("[SignApksBuilder] archiving unsigned APK %s%n", unsignedApk);
+                    apksToArchive.put(archivePrefix + unsignedApk.getName() + "/" + unsignedApk.getName(), relativeToWorkspace(workspace, unsignedApk));
+                }
+                if (getArchiveSignedApks()) {
+                    listener.getLogger().printf("[SignApksBuilder] archiving signed APK %s%n", signedRelName);
+                    apksToArchive.put(archivePrefix + unsignedApk.getName() + "/" + signedApk.getName(), signedRelName);
                 }
             }
+        }
 
-            String alignedRelName = relativeToWorkspace(workspace, alignedApk);
-            String signedRelName = relativeToWorkspace(workspace, signedApk);
-
-            if (!alignedApk.exists()) {
-                throw new AbortException(String.format("aligned APK does not exist: %s", alignedRelName));
+        if (Util.fixEmptyAndTrim(getAabsToSign()) != null) {
+            Set<FilePath> matchedAabs = new TreeSet<>(Comparator.comparing(FilePath::getRemote));
+            String[] aabGlobs = getSelectionGlobs(getAabsToSign());
+            for (String glob : aabGlobs) {
+                FilePath[] globMatch = workspace.list(glob, builderDir.getName() + "/**");
+                if (globMatch.length == 0) {
+                    throw new AbortException("No AABs in workspace matching " + glob);
+                }
+                matchedAabs.addAll(Arrays.asList(globMatch));
             }
 
-            listener.getLogger().printf("[SignApksBuilder] signing APK %s%n", alignedRelName);
+            for (FilePath unsignedAab : matchedAabs) {
+                unsignedAab = unsignedAab.absolutize();
 
-            FilePath signedParent = signedApk.getParent();
-            if (signedParent == null) {
-                continue;
-            }
-            if (!signedParent.exists()) {
-                signedParent.mkdirs();
-            }
-            SignApkCallable signApk = new SignApkCallable(signingParams.key, signingParams.certChain, signingParams.v1SigName, signedApk.getRemote(), listener);
-            alignedApk.act(signApk);
+                FilePath signedAab = signedApkMapping.destinationForUnsignedAab(unsignedAab, workspace);
+                FilePath signedParent = signedAab.getParent();
+                if (signedParent == null) {
+                    continue;
+                }
+                if (!signedParent.exists()) {
+                    signedParent.mkdirs();
+                }
 
-            listener.getLogger().printf("[SignApksBuilder] signed APK %s%n", signedRelName);
+                String signedRelName = relativeToWorkspace(workspace, signedAab);
+                listener.getLogger().printf("[SignApksBuilder] signing AAB %s%n", relativeToWorkspace(workspace, unsignedAab));
 
-            if (getArchiveUnsignedApks()) {
-                listener.getLogger().printf("[SignApksBuilder] archiving unsigned APK %s%n", unsignedApk);
-                apksToArchive.put(archivePrefix + unsignedApk.getName() + "/" + unsignedApk.getName(), relativeToWorkspace(workspace, unsignedApk));
-            }
-            if (getArchiveSignedApks()) {
-                listener.getLogger().printf("[SignApksBuilder] archiving signed APK %s%n", signedRelName);
-                apksToArchive.put(archivePrefix + unsignedApk.getName() + "/" + signedApk.getName(), signedRelName);
+                SignAabCallable signAab = new SignAabCallable(signingParams.key, signingParams.certChain, signingParams.alias, signedAab.getRemote(), listener);
+                unsignedAab.act(signAab);
+
+                listener.getLogger().printf("[SignApksBuilder] signed AAB %s%n", signedRelName);
+
+                if (getArchiveUnsignedApks()) {
+                    listener.getLogger().printf("[SignApksBuilder] archiving unsigned AAB %s%n", unsignedAab);
+                    apksToArchive.put(archivePrefix + unsignedAab.getName() + "/" + unsignedAab.getName(), relativeToWorkspace(workspace, unsignedAab));
+                }
+                if (getArchiveSignedApks()) {
+                    listener.getLogger().printf("[SignApksBuilder] archiving signed AAB %s%n", signedRelName);
+                    apksToArchive.put(archivePrefix + unsignedAab.getName() + "/" + signedAab.getName(), signedRelName);
+                }
             }
         }
 
@@ -524,6 +586,92 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
 
             return null;
         }
+    }
+
+    static class SignAabCallable extends MasterToSlaveFileCallable<Void> {
+
+        private static final long serialVersionUID = 1;
+
+        private final PrivateKey key;
+        private final Certificate[] certChain;
+        private final String alias;
+        private final String outputAab;
+        private final TaskListener listener;
+
+        SignAabCallable(PrivateKey key, Certificate[] certChain, String alias, String outputAab, TaskListener listener) {
+            this.key = key;
+            this.certChain = certChain;
+            this.alias = alias;
+            this.outputAab = outputAab;
+            this.listener = listener;
+        }
+
+        @Override
+        public Void invoke(File inputAabFile, VirtualChannel channel) throws IOException, InterruptedException {
+
+            File outputAabFile = new File(outputAab);
+            if (outputAabFile.isFile()) {
+                listener.getLogger().printf("[SignApksBuilder] deleting previous signed AAB %s%n", outputAab);
+                if (!outputAabFile.delete()) {
+                    throw new AbortException("failed to delete previous signed AAB " + outputAab);
+                }
+            }
+
+            List<X509Certificate> certs = new ArrayList<>(certChain.length);
+            for (Certificate cert : certChain) {
+                certs.add((X509Certificate) cert);
+            }
+
+            try {
+                CertPath certPath = CertificateFactory.getInstance("X.509").generateCertPath(certs);
+                JarSigner signer = new JarSigner.Builder(key, certPath)
+                    .digestAlgorithm("SHA-256")
+                    .signatureAlgorithm(signatureAlgorithmFor(key))
+                    .signerName(signerNameFor(alias))
+                    .build();
+                try (ZipFile inputZip = new ZipFile(inputAabFile);
+                     FileOutputStream output = new FileOutputStream(outputAabFile)) {
+                    signer.sign(inputZip, output);
+                }
+            }
+            catch (Exception e) {
+                PrintWriter details = listener.fatalError("[SignApksBuilder] error signing AAB %s", inputAabFile.getAbsolutePath());
+                e.printStackTrace(details);
+                throw new AbortException("failed to sign AAB " + inputAabFile.getAbsolutePath() + ": " + e.getLocalizedMessage());
+            }
+
+            return null;
+        }
+    }
+
+    private static String signatureAlgorithmFor(PrivateKey key) throws NoSuchAlgorithmException {
+        String keyAlgorithm = key.getAlgorithm();
+        if ("RSA".equalsIgnoreCase(keyAlgorithm)) {
+            return "SHA256withRSA";
+        }
+        else if ("EC".equalsIgnoreCase(keyAlgorithm)) {
+            return "SHA256withECDSA";
+        }
+        else if ("DSA".equalsIgnoreCase(keyAlgorithm)) {
+            return "SHA256withDSA";
+        }
+        return JarSigner.Builder.getDefaultSignatureAlgorithm(key);
+    }
+
+    /**
+     * Derive the JAR signer name (the base name for the {@code META-INF/*.SF} and
+     * signature block files) from the key alias, mirroring the {@code jarsigner} tool:
+     * the name is uppercased and truncated to eight characters.
+     */
+    private static String signerNameFor(String alias) {
+        String name = alias == null ? "" : alias.toUpperCase(Locale.ENGLISH);
+        if (name.length() > 8) {
+            name = name.substring(0, 8);
+        }
+        if (name.isEmpty()) {
+            name = "SIGNER";
+        }
+        return name;
     }
 
 }

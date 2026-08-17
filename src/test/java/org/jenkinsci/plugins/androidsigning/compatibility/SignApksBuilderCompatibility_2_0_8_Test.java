@@ -33,7 +33,7 @@ class SignApksBuilderCompatibility_2_0_8_Test {
     void converts_v2_0_8_entriesToBuilders() {
 
         FreeStyleProject job = (FreeStyleProject) testJenkins.jenkins.getItem(getClass().getSimpleName());
-        DescribableList<Builder,?> builders = job.getBuildersList();
+        DescribableList<Builder, ?> builders = job.getBuildersList();
 
         assertThat(builders.size(), equalTo(3));
 
@@ -64,7 +64,7 @@ class SignApksBuilderCompatibility_2_0_8_Test {
     void doesNotSkipZipalignFor_v2_0_8_builders() {
 
         FreeStyleProject job = (FreeStyleProject) testJenkins.jenkins.getItem(getClass().getSimpleName());
-        DescribableList<Builder,?> builders = job.getBuildersList();
+        DescribableList<Builder, ?> builders = job.getBuildersList();
 
         assertThat(builders.size(), equalTo(3));
 
@@ -83,7 +83,7 @@ class SignApksBuilderCompatibility_2_0_8_Test {
     void usesOldSignedApkMappingFor_v2_0_8_builders() {
 
         FreeStyleProject job = (FreeStyleProject) testJenkins.jenkins.getItem(getClass().getSimpleName());
-        DescribableList<Builder,?> builders = job.getBuildersList();
+        DescribableList<Builder, ?> builders = job.getBuildersList();
 
         SignApksBuilder builder = (SignApksBuilder) builders.get(0);
         assertThat(builder.getSignedApkMapping(), instanceOf(SignedApkMappingStrategy.UnsignedApkBuilderDirMapping.class));

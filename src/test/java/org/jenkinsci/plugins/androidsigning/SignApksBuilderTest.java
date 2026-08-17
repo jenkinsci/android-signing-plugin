@@ -22,6 +22,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -33,6 +34,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import hudson.EnvVars;
@@ -79,10 +81,9 @@ import static org.jenkinsci.plugins.androidsigning.ApkArtifactIsSignedMatcher.is
 import static org.jenkinsci.plugins.androidsigning.TestKeyStore.KEY_ALIAS;
 import static org.jenkinsci.plugins.androidsigning.TestKeyStore.KEY_STORE_ID;
 import static org.jenkinsci.plugins.androidsigning.TestKeyStore.KEY_STORE_RESOURCE;
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
+import static org.hamcrest.MatcherAssert.assertThat;
 
 @SuppressWarnings("deprecation")
 @WithJenkins
@@ -146,6 +147,10 @@ class SignApksBuilderTest {
         return isSignedWith(KEY_STORE_ID, KEY_ALIAS);
     }
 
+    private AabArtifactIsSignedMatcher aabIsSigned() throws KeyStoreException {
+        return AabArtifactIsSignedMatcher.isSignedWith(KEY_STORE_ID, KEY_ALIAS);
+    }
+
     private FilePath androidHome = null;
     private FakeZipalign zipalignLauncher = null;
     private PretendSlave slave = null;
@@ -155,7 +160,7 @@ class SignApksBuilderTest {
     private EnvironmentVariablesNodeProperty androidHomeEnvProp = null;
 
     private String currentTestName;
-    
+
     @TempDir
     private File testDir;
 
@@ -210,7 +215,7 @@ class SignApksBuilderTest {
     @Test
     void credentialsExist() {
         List<StandardCertificateCredentials> result = CredentialsProvider.lookupCredentials(
-            StandardCertificateCredentials.class, testJenkins.jenkins, ACL.SYSTEM, Collections.emptyList());
+                StandardCertificateCredentials.class, testJenkins.jenkins, ACL.SYSTEM, Collections.emptyList());
         StandardCertificateCredentials credentials = CredentialsMatchers.firstOrNull(result, CredentialsMatchers.withId(KEY_STORE_ID));
         assertThat(credentials, sameInstance(testKeyStore.credentials));
         try {
@@ -225,12 +230,12 @@ class SignApksBuilderTest {
     void archivesTheSignedApk() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, KEY_ALIAS, "*-unsigned.apk")
-            .archiveSignedApks(true).archiveUnsignedApk(false));
+                .archiveSignedApks(true).archiveUnsignedApk(false));
         SignApksBuilder builder = new SignApksBuilder(entries);
         FreeStyleProject job = createSignApkJob();
         job.getBuildersList().add(builder);
         FreeStyleBuild build = testJenkins.buildAndAssertSuccess(job);
-        List<Run<FreeStyleProject,FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
+        List<Run<FreeStyleProject, FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
 
         assertThat(artifacts.size(), equalTo(1));
         Run.Artifact signedApkArtifact = artifacts.get(0);
@@ -241,12 +246,12 @@ class SignApksBuilderTest {
     void archivesTheUnsignedApk() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, KEY_ALIAS, "*-unsigned.apk")
-            .archiveSignedApks(false).archiveUnsignedApk(true));
+                .archiveSignedApks(false).archiveUnsignedApk(true));
         SignApksBuilder builder = new SignApksBuilder(entries);
         FreeStyleProject job = createSignApkJob();
         job.getBuildersList().add(builder);
         FreeStyleBuild build = testJenkins.buildAndAssertSuccess(job);
-        List<Run<FreeStyleProject,FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
+        List<Run<FreeStyleProject, FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
 
         assertThat(artifacts.size(), equalTo(1));
         Run.Artifact signedApkArtifact = artifacts.get(0);
@@ -257,12 +262,12 @@ class SignApksBuilderTest {
     void archivesTheUnsignedAndSignedApks() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, KEY_ALIAS, "*-unsigned.apk")
-            .archiveSignedApks(true).archiveUnsignedApk(true));
+                .archiveSignedApks(true).archiveUnsignedApk(true));
         SignApksBuilder builder = new SignApksBuilder(entries);
         FreeStyleProject job = createSignApkJob();
         job.getBuildersList().add(builder);
         FreeStyleBuild build = testJenkins.buildAndAssertSuccess(job);
-        List<Run<FreeStyleProject,FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
+        List<Run<FreeStyleProject, FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
 
         assertThat(artifacts.size(), equalTo(2));
         Run.Artifact signedApkArtifact = artifacts.get(0);
@@ -275,12 +280,12 @@ class SignApksBuilderTest {
     void archivesNothing() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, getClass().getSimpleName(), "*-unsigned.apk")
-            .archiveSignedApks(false).archiveUnsignedApk(false));
+                .archiveSignedApks(false).archiveUnsignedApk(false));
         SignApksBuilder builder = new SignApksBuilder(entries);
         FreeStyleProject job = createSignApkJob();
         job.getBuildersList().add(builder);
         FreeStyleBuild build = testJenkins.buildAndAssertSuccess(job);
-        List<Run<FreeStyleProject,FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
+        List<Run<FreeStyleProject, FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
 
         assertThat(artifacts, empty());
     }
@@ -289,27 +294,66 @@ class SignApksBuilderTest {
     void signsTheApk() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, KEY_ALIAS, "*-unsigned.apk")
-            .archiveSignedApks(true).archiveUnsignedApk(false));
+                .archiveSignedApks(true).archiveUnsignedApk(false));
         SignApksBuilder builder = new SignApksBuilder(entries);
         FreeStyleProject job = createSignApkJob();
         job.getBuildersList().add(builder);
         FreeStyleBuild build = testJenkins.buildAndAssertSuccess(job);
-        List<Run<FreeStyleProject,FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
+        List<Run<FreeStyleProject, FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
         Run.Artifact signedApkArtifact = artifacts.get(0);
 
         assertThat(buildArtifact(build, signedApkArtifact), isSigned());
     }
 
     @Test
+    void signsTheAab() throws Exception {
+        SignApksBuilder builder = new SignApksBuilder();
+        builder.setKeyStoreId(KEY_STORE_ID);
+        builder.setKeyAlias(KEY_ALIAS);
+        builder.setAabsToSign("*-unsigned.aab");
+        builder.setArchiveSignedApks(true);
+        builder.setArchiveUnsignedApks(false);
+
+        FreeStyleProject job = createSignApkJob();
+        job.getBuildersList().add(builder);
+        FreeStyleBuild build = testJenkins.buildAndAssertSuccess(job);
+        List<Run<FreeStyleProject, FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
+
+        assertThat(artifacts.size(), equalTo(1));
+        Run.Artifact signedAabArtifact = artifacts.get(0);
+        assertThat(signedAabArtifact.getFileName(), equalTo("SignApksBuilderTest.aab"));
+        assertThat(buildArtifact(build, signedAabArtifact), aabIsSigned());
+    }
+
+    @Test
+    void archivesTheUnsignedAab() throws Exception {
+        SignApksBuilder builder = new SignApksBuilder();
+        builder.setKeyStoreId(KEY_STORE_ID);
+        builder.setKeyAlias(KEY_ALIAS);
+        builder.setAabsToSign("*-unsigned.aab");
+        builder.setArchiveSignedApks(false);
+        builder.setArchiveUnsignedApks(true);
+
+        FreeStyleProject job = createSignApkJob();
+        job.getBuildersList().add(builder);
+        FreeStyleBuild build = testJenkins.buildAndAssertSuccess(job);
+        List<Run<FreeStyleProject, FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
+
+        assertThat(artifacts.size(), equalTo(1));
+        Run.Artifact unsignedAabArtifact = artifacts.get(0);
+        assertThat(unsignedAabArtifact.getFileName(), equalTo("SignApksBuilderTest-unsigned.aab"));
+    }
+
+    @Test
     void supportsApksWithoutUnsignedSuffix() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, KEY_ALIAS, "SignApksBuilderTest.apk")
-            .archiveSignedApks(true).archiveUnsignedApk(true));
+                .archiveSignedApks(true).archiveUnsignedApk(true));
         SignApksBuilder builder = new SignApksBuilder(entries);
         FreeStyleProject job = createSignApkJob();
         job.getBuildersList().add(builder);
         FreeStyleBuild build = testJenkins.buildAndAssertSuccess(job);
-        List<Run<FreeStyleProject,FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
+        List<Run<FreeStyleProject, FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
 
         Run.Artifact signedApkArtifact = artifacts.get(0);
         Run.Artifact unsignedApkArtifact = artifacts.get(1);
@@ -323,19 +367,19 @@ class SignApksBuilderTest {
     void signsAllMatchingApks() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, KEY_ALIAS, "SignApksBuilderTest-*.apk")
-            .archiveSignedApks(true).archiveUnsignedApk(true));
+                .archiveSignedApks(true).archiveUnsignedApk(true));
         SignApksBuilder builder = new SignApksBuilder(entries);
         FreeStyleProject job = createSignApkJob();
         job.getBuildersList().add(builder);
         FreeStyleBuild build = testJenkins.buildAndAssertSuccess(job);
-        List<Run<FreeStyleProject,FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
+        List<Run<FreeStyleProject, FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
 
         assertThat(artifacts.size(), equalTo(4));
         assertThat(artifacts, hasItems(
-            hasProperty("fileName", endsWith("SignApksBuilderTest-chocolate_flavor.apk")),
-            hasProperty("fileName", endsWith("SignApksBuilderTest-chocolate_flavor-signed.apk")),
-            hasProperty("fileName", endsWith("SignApksBuilderTest-unsigned.apk")),
-            hasProperty("fileName", endsWith("SignApksBuilderTest-signed.apk"))));
+                hasProperty("fileName", endsWith("SignApksBuilderTest-chocolate_flavor.apk")),
+                hasProperty("fileName", endsWith("SignApksBuilderTest-chocolate_flavor-signed.apk")),
+                hasProperty("fileName", endsWith("SignApksBuilderTest-unsigned.apk")),
+                hasProperty("fileName", endsWith("SignApksBuilderTest-signed.apk"))));
 
         artifacts.forEach(artifact -> {
             try {
@@ -370,7 +414,7 @@ class SignApksBuilderTest {
         job.getBuildersList().add(builder1);
         job.getBuildersList().add(builder2);
         FreeStyleBuild build = testJenkins.buildAndAssertSuccess(job);
-        List<Run<FreeStyleProject,FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
+        List<Run<FreeStyleProject, FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
 
         assertThat(artifacts.size(), equalTo(4));
 
@@ -388,9 +432,9 @@ class SignApksBuilderTest {
         assertThat(apkNames, hasItem(KEY_STORE_ID + "/" + KEY_ALIAS + "/SignApksBuilderTest-unsigned.apk/SignApksBuilderTest.apk"));
 
         Run.Artifact bigger = artifacts.stream().filter(artifact ->
-            artifact.relativePath.endsWith("SignApksBuilderTest.apk/SignApksBuilderTest-signed.apk")).findFirst().get();
+                artifact.relativePath.endsWith("SignApksBuilderTest.apk/SignApksBuilderTest-signed.apk")).findFirst().get();
         Run.Artifact smaller = artifacts.stream().filter(artifact ->
-            artifact.relativePath.endsWith("SignApksBuilderTest-unsigned.apk/SignApksBuilderTest.apk")).findFirst().get();
+                artifact.relativePath.endsWith("SignApksBuilderTest-unsigned.apk/SignApksBuilderTest.apk")).findFirst().get();
 
         assertThat(bigger.getFileSize(), greaterThan(smaller.getFileSize()));
         assertThat(buildArtifact(build, bigger), isSigned());
@@ -410,7 +454,7 @@ class SignApksBuilderTest {
         FreeStyleProject job = createSignApkJob();
         job.getBuildersList().add(builder);
         FreeStyleBuild build = testJenkins.buildAndAssertSuccess(job);
-        List<Run<FreeStyleProject,FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
+        List<Run<FreeStyleProject, FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
 
         assertThat(artifacts.size(), equalTo(2));
         List<String> artifactNames = artifacts.stream().map(Run.Artifact::getFileName).collect(Collectors.toList());
@@ -433,7 +477,7 @@ class SignApksBuilderTest {
         FreeStyleProject job = createSignApkJob();
         job.getBuildersList().add(builder);
         FreeStyleBuild build = testJenkins.buildAndAssertSuccess(job);
-        List<Run<FreeStyleProject,FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
+        List<Run<FreeStyleProject, FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
 
         assertThat(artifacts.size(), equalTo(3));
     }
@@ -450,7 +494,7 @@ class SignApksBuilderTest {
         FreeStyleProject job = createSignApkJob();
         job.getBuildersList().add(builder);
         FreeStyleBuild build = testJenkins.buildAndAssertSuccess(job);
-        List<Run<FreeStyleProject,FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
+        List<Run<FreeStyleProject, FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
 
         assertThat(artifacts.size(), equalTo(1));
     }
@@ -459,7 +503,7 @@ class SignApksBuilderTest {
     void usesAndroidHomeOverride() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, getClass().getSimpleName(), "*-unsigned.apk")
-            .archiveSignedApks(true).archiveUnsignedApk(false));
+                .archiveSignedApks(true).archiveUnsignedApk(false));
         SignApksBuilder builder = new SignApksBuilder(entries);
         FilePath androidHomeOverride = testJenkins.jenkins.getRootPath().createTempDir("android-home-override", null);
         androidHome.copyRecursiveTo(androidHomeOverride);
@@ -475,7 +519,7 @@ class SignApksBuilderTest {
     void usesZipalignPathOverride() throws Exception {
         List<Apk> entries = new ArrayList<>();
         entries.add(new Apk(KEY_STORE_ID, KEY_ALIAS, "*-unsigned.apk")
-            .archiveSignedApks(true).archiveUnsignedApk(false));
+                .archiveSignedApks(true).archiveUnsignedApk(false));
         SignApksBuilder builder = new SignApksBuilder(entries);
         FilePath zipalignOverride = testJenkins.jenkins.getRootPath().createTempDir("zipalign-override", null);
         zipalignOverride = zipalignOverride.createTextTempFile("zipalign-override", ".sh", "echo \"zipalign $@\"");
@@ -572,14 +616,14 @@ class SignApksBuilderTest {
 
         assertThat(original.getEntries(), nullValue());
         testJenkins.assertEqualBeans(original, submitted, String.join(",",
-            "keyStoreId",
-            "keyAlias",
-            "apksToSign",
-            "skipZipalign",
-            "archiveUnsignedApks",
-            "archiveSignedApks",
-            "androidHome",
-            "zipalignPath"
+                "keyStoreId",
+                "keyAlias",
+                "apksToSign",
+                "skipZipalign",
+                "archiveUnsignedApks",
+                "archiveSignedApks",
+                "androidHome",
+                "zipalignPath"
         ));
         assertThat(submitted.getSignedApkMapping(), instanceOf(original.getSignedApkMapping().getClass()));
     }
@@ -587,7 +631,7 @@ class SignApksBuilderTest {
     @Test
     void identitySubmissionWithSingleOldSigningEntry() throws Exception {
         Apk entry = new Apk(KEY_STORE_ID, KEY_ALIAS, "**/*-unsigned.apk")
-            .archiveSignedApks(true).archiveUnsignedApk(false);
+                .archiveSignedApks(true).archiveUnsignedApk(false);
         SignApksBuilder original = new SignApksBuilder(Collections.singletonList(entry));
         FreeStyleProject job = testJenkins.createFreeStyleProject();
         job.getBuildersList().add(original);
@@ -600,14 +644,14 @@ class SignApksBuilderTest {
 
         assertThat(original.getEntries(), nullValue());
         testJenkins.assertEqualBeans(original, submitted, String.join(",",
-            "keyStoreId",
-            "keyAlias",
-            "apksToSign",
-            "skipZipalign",
-            "archiveUnsignedApks",
-            "archiveSignedApks",
-            "androidHome",
-            "zipalignPath"
+                "keyStoreId",
+                "keyAlias",
+                "apksToSign",
+                "skipZipalign",
+                "archiveUnsignedApks",
+                "archiveSignedApks",
+                "androidHome",
+                "zipalignPath"
         ));
         assertThat(submitted.getSignedApkMapping(), instanceOf(original.getSignedApkMapping().getClass()));
     }
@@ -770,7 +814,7 @@ class SignApksBuilderTest {
         job.getBuildersList().add(builder);
 
         FreeStyleBuild build = testJenkins.buildAndAssertSuccess(job);
-        List<Run<FreeStyleProject,FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
+        List<Run<FreeStyleProject, FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
         Run.Artifact signedApkArtifact = artifacts.get(0);
 
         assertThat(buildArtifact(build, signedApkArtifact), isSignedWith(KEY_STORE_ID, KEY_ALIAS));
@@ -795,7 +839,7 @@ class SignApksBuilderTest {
         job.getBuildersList().add(builder);
 
         FreeStyleBuild build = testJenkins.assertBuildStatus(Result.FAILURE, job.scheduleBuild2(0));
-        List<Run<FreeStyleProject,FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
+        List<Run<FreeStyleProject, FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
 
         testJenkins.assertLogContains(GeneralSecurityException.class.getName(), build);
         testJenkins.assertLogContains(builder.getKeyAlias(), build);
@@ -805,7 +849,7 @@ class SignApksBuilderTest {
     void supportsMultipleKeysInKeyStore() throws Exception {
 
         TestKeyStore multiKeyStore = new TestKeyStore(testJenkins,
-            "/SignApksBuilderTestMulti.p12", "multiKey", null, "SignApksBuilderTest");
+                "/SignApksBuilderTestMulti.p12", "multiKey", null, "SignApksBuilderTest");
         multiKeyStore.addCredentials();
 
         SignApksBuilder builder = new SignApksBuilder();
@@ -817,7 +861,7 @@ class SignApksBuilderTest {
         job.getBuildersList().add(builder);
 
         FreeStyleBuild build = testJenkins.buildAndAssertSuccess(job);
-        List<Run<FreeStyleProject,FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
+        List<Run<FreeStyleProject, FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
         Run.Artifact signedApkArtifact = artifacts.get(0);
 
         assertThat(buildArtifact(build, signedApkArtifact), isSignedWith("multiKey", "SignApksBuilderTest2"));
@@ -836,7 +880,7 @@ class SignApksBuilderTest {
     void failsWhenAliasIsNullAndMultipleKeysArePresent() throws Exception {
 
         TestKeyStore multiKeyStore = new TestKeyStore(testJenkins,
-            "/SignApksBuilderTestMulti.p12", "multiKey", null, "SignApksBuilderTest");
+                "/SignApksBuilderTestMulti.p12", "multiKey", null, "SignApksBuilderTest");
         multiKeyStore.addCredentials();
 
         SignApksBuilder builder = new SignApksBuilder();

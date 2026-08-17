@@ -30,6 +30,8 @@ public class SignApksStep extends AbstractStepImpl {
     private String keyAlias;
     @CheckForNull
     private String apksToSign;
+    @CheckForNull
+    private String aabsToSign;
     private SignedApkMappingStrategy signedApkMapping;
     private String androidHome;
     private String zipalignPath;
@@ -54,6 +56,11 @@ public class SignApksStep extends AbstractStepImpl {
     @DataBoundSetter
     public void setApksToSign(String x) {
         apksToSign = x;
+    }
+
+    @DataBoundSetter
+    public void setAabsToSign(String aabsToSign) {
+        this.aabsToSign = aabsToSign;
     }
 
     @DataBoundSetter
@@ -96,6 +103,10 @@ public class SignApksStep extends AbstractStepImpl {
 
     public String getApksToSign() {
         return apksToSign;
+    }
+
+    public String getAabsToSign() {
+        return aabsToSign;
     }
 
     public SignedApkMappingStrategy getSignedApkMapping() {
@@ -165,6 +176,7 @@ public class SignApksStep extends AbstractStepImpl {
             builder.setKeyStoreId(step.getKeyStoreId());
             builder.setKeyAlias(step.getKeyAlias());
             builder.setApksToSign(step.getApksToSign());
+            builder.setAabsToSign(step.getAabsToSign());
             builder.setSignedApkMapping(step.getSignedApkMapping());
             builder.setSkipZipalign(step.getSkipZipalign());
             builder.setArchiveSignedApks(step.getArchiveSignedApks());

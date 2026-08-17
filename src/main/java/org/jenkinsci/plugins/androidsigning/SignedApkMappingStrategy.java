@@ -21,6 +21,28 @@ public abstract class SignedApkMappingStrategy extends AbstractDescribableImpl<S
 
     public abstract FilePath destinationForUnsignedApk(FilePath unsignedApk, FilePath workspace);
 
+    /**
+     * Return the destination for the signed AAB given its unsigned input. The default
+     * implementation writes the signed AAB as a sibling of the unsigned AAB, mirroring
+     * {@link UnsignedApkSiblingMapping} but with a {@code .aab} extension. A concrete
+     * (non-abstract) default keeps existing third-party {@link SignedApkMappingStrategy}
+     * implementations source and binary compatible.
+     * @param unsignedAab the unsigned AAB to sign
+     * @param workspace the build workspace
+     * @return the destination {@link FilePath} for the signed AAB
+     */
+    public FilePath destinationForUnsignedAab(FilePath unsignedAab, FilePath workspace) {
+        String strippedName = unqualifiedNameOfUnsignedApk(unsignedAab);
+        if (!unsignedAab.getBaseName().endsWith("-unsigned")) {
+            strippedName += "-signed";
+        }
+        FilePath parent = unsignedAab.getParent();
+        if (parent == null) {
+            return null;
+        }
+        return parent.child(strippedName + ".aab");
+    }
+
     public static ExtensionList<SignedApkMappingStrategy> all() {
         return Jenkins.getActiveInstance().getExtensionList(SignedApkMappingStrategy.class);
     }
@@ -48,6 +70,12 @@ public abstract class SignedApkMappingStrategy extends AbstractDescribableImpl<S
         public FilePath destinationForUnsignedApk(FilePath unsignedApk, FilePath workspace) {
             String strippedName = unqualifiedNameOfUnsignedApk(unsignedApk);
             return workspace.child(SignApksBuilder.BUILDER_DIR).child(unsignedApk.getName()).child(strippedName + "-signed.apk");
+        }
+
+        @Override
+        public FilePath destinationForUnsignedAab(FilePath unsignedAab, FilePath workspace) {
+            String strippedName = unqualifiedNameOfUnsignedApk(unsignedAab);
+            return workspace.child(SignApksBuilder.BUILDER_DIR).child(unsignedAab.getName()).child(strippedName + "-signed.aab");
         }
 
         @Extension

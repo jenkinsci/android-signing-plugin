@@ -75,6 +75,11 @@ pattern specifying the APK files relative to the job workspace you want to sign.
 You can specify multiple glob patterns separated by commas if you wish.  For most
 projects `**/*-unsigned.apk` should suffice.
 
+The same step can also sign Android App Bundles (`.aab`).  Supply the _AABs to Sign_
+field (or the `aabsToSign` option in a Pipeline script) with a glob selecting your AAB
+files, e.g. `**/*-unsigned.aab`.  AABs are JAR-signed with a SHA-256 digest and are not
+zipaligned.
+
 ![Sign Android APKs form](android-signing.png)
 
 You can tell a _Sign Android APKs_ build step the location of `zipalign`
@@ -149,6 +154,8 @@ node {
         keyStoreId: "myApp.signerKeyStore",
         keyAlias: "myTeam",
         apksToSign: "**/*-unsigned.apk"
+        // to sign Android App Bundles instead, use:
+        // aabsToSign: "**/*-unsigned.aab"
         // uncomment the following line to output the signed APK to a separate directory as described above
         // signedApkMapping: [ $class: UnsignedApkBuilderDirMapping ]
         // uncomment the following line to output the signed APK as a sibling of the unsigned APK, as described above, or just omit signedApkMapping
@@ -186,6 +193,8 @@ freeStyleJob('myApp.seed') {
         signAndroidApks '**/myApp-unsigned.apk', {
             keyStoreId 'myApp.keyStore'
             keyAlias 'myAppKey'
+            // to sign Android App Bundles instead, use:
+            // aabsToSign '**/myApp-unsigned.aab'
             // uncomment the following line to output the signed APK to a separate directory as described above
             // signedApkMapping unsignedApkNameDir()
             // uncomment the following line to output the signed APK as a sibling of the unsigned APK, as described above, or just omit signedApkMapping
