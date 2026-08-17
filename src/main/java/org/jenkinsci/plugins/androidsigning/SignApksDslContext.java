@@ -30,6 +30,10 @@ public class SignApksDslContext extends ContextExtensionPoint {
             builder.setAabsToSign(aabsToSign);
         }
 
+        public void aabDigestAlgorithm(String aabDigestAlgorithm) {
+            builder.setAabDigestAlgorithm(aabDigestAlgorithm);
+        }
+
         public void signedApkMapping(SignedApkMappingStrategy x) {
             builder.setSignedApkMapping(x);
         }

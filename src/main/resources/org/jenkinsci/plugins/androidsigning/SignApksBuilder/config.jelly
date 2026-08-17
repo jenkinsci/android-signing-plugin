@@ -5,6 +5,9 @@
     <f:entry field="skipZipalign" title="${%field.skipZipalign}">
       <f:checkbox default="false"/>
     </f:entry>
+    <f:entry field="aabDigestAlgorithm" title="${%field.aabDigestAlgorithm}">
+      <f:select/>
+    </f:entry>
     <f:entry field="androidHome" title="${%field.androidHome}">
       <f:textbox/>
     </f:entry>

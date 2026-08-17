@@ -113,6 +113,7 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
     private String keyAlias;
     private String apksToSign;
     private String aabsToSign;
+    private String aabDigestAlgorithm = "SHA-256";
     private SignedApkMappingStrategy signedApkMapping;
     private boolean archiveSignedApks = true;
     private boolean archiveUnsignedApks = false;
@@ -219,6 +220,15 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
 
     public String getAabsToSign() {
         return aabsToSign;
+    }
+
+    @DataBoundSetter
+    public void setAabDigestAlgorithm(String aabDigestAlgorithm) {
+        this.aabDigestAlgorithm = aabDigestAlgorithm;
+    }
+
+    public String getAabDigestAlgorithm() {
+        return aabDigestAlgorithm;
     }
 
     @DataBoundSetter
@@ -421,7 +431,7 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
                 String signedRelName = relativeToWorkspace(workspace, signedAab);
                 listener.getLogger().printf("[SignApksBuilder] signing AAB %s%n", relativeToWorkspace(workspace, unsignedAab));
 
-                SignAabCallable signAab = new SignAabCallable(signingParams.key, signingParams.certChain, signingParams.alias, signedAab.getRemote(), listener);
+                SignAabCallable signAab = new SignAabCallable(signingParams.key, signingParams.certChain, signingParams.alias, getAabDigestAlgorithm(), signedAab.getRemote(), listener);
                 unsignedAab.act(signAab);
 
                 listener.getLogger().printf("[SignApksBuilder] signed AAB %s%n", signedRelName);
@@ -492,6 +502,15 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
                 }
                 items.add(label, id);
             }
+            return items;
+        }
+
+        @SuppressWarnings("unused")
+        public ListBoxModel doFillAabDigestAlgorithmItems() {
+            ListBoxModel items = new ListBoxModel();
+            items.add("SHA-256");
+            items.add("SHA-384");
+            items.add("SHA-512");
             return items;
         }
 
@@ -595,13 +614,15 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
         private final PrivateKey key;
         private final Certificate[] certChain;
         private final String alias;
+        private final String digestAlgorithm;
         private final String outputAab;
         private final TaskListener listener;
 
-        SignAabCallable(PrivateKey key, Certificate[] certChain, String alias, String outputAab, TaskListener listener) {
+        SignAabCallable(PrivateKey key, Certificate[] certChain, String alias, String digestAlgorithm, String outputAab, TaskListener listener) {
             this.key = key;
             this.certChain = certChain;
             this.alias = alias;
+            this.digestAlgorithm = digestAlgorithm;
             this.outputAab = outputAab;
             this.listener = listener;
         }
@@ -624,8 +645,12 @@ public class SignApksBuilder extends Builder implements SimpleBuildStep {
 
             try {
                 CertPath certPath = CertificateFactory.getInstance("X.509").generateCertPath(certs);
+                String digest = Util.fixEmptyAndTrim(digestAlgorithm);
+                if (digest == null) {
+                    digest = "SHA-256";
+                }
                 JarSigner signer = new JarSigner.Builder(key, certPath)
-                    .digestAlgorithm("SHA-256")
+                    .digestAlgorithm(digest)
                     .signatureAlgorithm(signatureAlgorithmFor(key))
                     .signerName(signerNameFor(alias))
                     .build();

@@ -77,8 +77,9 @@ projects `**/*-unsigned.apk` should suffice.
 
 The same step can also sign Android App Bundles (`.aab`).  Supply the _AABs to Sign_
 field (or the `aabsToSign` option in a Pipeline script) with a glob selecting your AAB
-files, e.g. `**/*-unsigned.aab`.  AABs are JAR-signed with a SHA-256 digest and are not
-zipaligned.
+files, e.g. `**/*-unsigned.aab`.  AABs are JAR-signed and are not zipaligned.  The JAR
+digest algorithm defaults to `SHA-256` (required by Google Play) and can be changed via
+the _AAB Digest Algorithm_ field (or the `aabDigestAlgorithm` Pipeline option).
 
 ![Sign Android APKs form](android-signing.png)
 
@@ -156,6 +157,7 @@ node {
         apksToSign: "**/*-unsigned.apk"
         // to sign Android App Bundles instead, use:
         // aabsToSign: "**/*-unsigned.aab"
+        // aabDigestAlgorithm: "SHA-512"
         // uncomment the following line to output the signed APK to a separate directory as described above
         // signedApkMapping: [ $class: UnsignedApkBuilderDirMapping ]
         // uncomment the following line to output the signed APK as a sibling of the unsigned APK, as described above, or just omit signedApkMapping

@@ -326,6 +326,33 @@ class SignApksBuilderTest {
     }
 
     @Test
+    void signsTheAabWithCustomDigestAlgorithm() throws Exception {
+        SignApksBuilder builder = new SignApksBuilder();
+        builder.setKeyStoreId(KEY_STORE_ID);
+        builder.setKeyAlias(KEY_ALIAS);
+        builder.setAabsToSign("*-unsigned.aab");
+        builder.setAabDigestAlgorithm("SHA-512");
+        builder.setArchiveSignedApks(true);
+        builder.setArchiveUnsignedApks(false);
+
+        FreeStyleProject job = createSignApkJob();
+        job.getBuildersList().add(builder);
+        FreeStyleBuild build = testJenkins.buildAndAssertSuccess(job);
+        List<Run<FreeStyleProject, FreeStyleBuild>.Artifact> artifacts = build.getArtifacts();
+
+        assertThat(artifacts.size(), equalTo(1));
+        Run.Artifact signedAabArtifact = artifacts.get(0);
+        assertThat(signedAabArtifact.getFileName(), equalTo("SignApksBuilderTest.aab"));
+
+        VirtualFile virtualSignedAab = build.getArtifactManager().root().child(signedAabArtifact.relativePath);
+        FilePath signedAabPath = build.getWorkspace().createTempFile("verify-", ".aab");
+        signedAabPath.copyFrom(virtualSignedAab.open());
+        VerifyAabCallable.VerifyResult result = signedAabPath.act(new VerifyAabCallable());
+        assertThat(result.isSigned, is(true));
+        assertThat(result.digestAlgorithm, equalTo("SHA-512"));
+    }
+
+    @Test
     void archivesTheUnsignedAab() throws Exception {
         SignApksBuilder builder = new SignApksBuilder();
         builder.setKeyStoreId(KEY_STORE_ID);
