@@ -25,6 +25,9 @@
   <f:entry field="apksToSign" title="${%field.apksToSign}">
     <f:textbox/>
   </f:entry>
+  <f:entry field="aabsToSign" title="${%field.aabsToSign}">
+    <f:textbox/>
+  </f:entry>
   <f:entry field="archiveSignedApks" title="${%field.archiveSignedApks}">
     <f:checkbox default="true"/>
   </f:entry>

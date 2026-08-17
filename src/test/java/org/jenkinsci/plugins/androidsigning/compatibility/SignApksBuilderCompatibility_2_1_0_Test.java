@@ -33,7 +33,7 @@ class SignApksBuilderCompatibility_2_1_0_Test {
     void doesNotSkipZipalignFor_v2_1_0_builders() {
 
         FreeStyleProject job = (FreeStyleProject) testJenkins.jenkins.getItem(getClass().getSimpleName());
-        DescribableList<Builder,?> builders = job.getBuildersList();
+        DescribableList<Builder, ?> builders = job.getBuildersList();
 
         assertThat(builders.size(), equalTo(2));
 
@@ -59,7 +59,7 @@ class SignApksBuilderCompatibility_2_1_0_Test {
     void usesOldSignedApkMappingFor_v2_1_0_builders() {
 
         FreeStyleProject job = (FreeStyleProject) testJenkins.jenkins.getItem(getClass().getSimpleName());
-        DescribableList<Builder,?> builders = job.getBuildersList();
+        DescribableList<Builder, ?> builders = job.getBuildersList();
 
         assertThat(builders.size(), equalTo(2));
 

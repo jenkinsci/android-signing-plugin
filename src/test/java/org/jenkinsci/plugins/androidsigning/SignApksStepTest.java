@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.PretendSlave;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
 import java.io.File;
 import java.net.URL;
@@ -17,7 +18,6 @@ import java.util.stream.Collectors;
 import hudson.EnvVars;
 import hudson.model.Run;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
-import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
 import static org.hamcrest.CoreMatchers.endsWith;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -48,7 +48,7 @@ class SignApksStepTest {
         EnvironmentVariablesNodeProperty prop = new EnvironmentVariablesNodeProperty();
         EnvVars envVars = prop.getEnvVars();
         envVars.put("ANDROID_HOME", androidHome);
-        testJenkins.jenkins.getGlobalNodeProperties().add(prop);
+        testJenkins.getInstance().getGlobalNodeProperties().add(prop);
         zipalign = new FakeZipalign();
         slave = testJenkins.createPretendSlave(zipalign);
         slave.getComputer().getEnvironment().put("ANDROID_HOME", androidHome);
@@ -64,18 +64,18 @@ class SignApksStepTest {
     void dslWorks() throws Exception {
         WorkflowJob job = testJenkins.jenkins.createProject(WorkflowJob.class, getClass().getSimpleName());
         job.setDefinition(new CpsFlowDefinition(String.format(
-            "node('%s') {%n" +
-            "  wrap($class: 'CopyTestWorkspace') {%n" +
-            "    signAndroidApks(" +
-            "      keyStoreId: '%s',%n" +
-            "      keyAlias: '%s',%n" +
-            "      apksToSign: '*-unsigned.apk, **/*-release-unsigned.apk',%n" +
-            "      archiveSignedApks: true,%n" +
-            "      archiveUnsignedApks: true,%n" +
-            "      androidHome: env.ANDROID_HOME%n" +
-            "    )%n" +
-            "  }%n" +
-            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
+                "node('%s') {%n" +
+                        "  wrap($class: 'CopyTestWorkspace') {%n" +
+                        "    signAndroidApks(" +
+                        "      keyStoreId: '%s',%n" +
+                        "      keyAlias: '%s',%n" +
+                        "      apksToSign: '*-unsigned.apk, **/*-release-unsigned.apk',%n" +
+                        "      archiveSignedApks: true,%n" +
+                        "      archiveUnsignedApks: true,%n" +
+                        "      androidHome: env.ANDROID_HOME%n" +
+                        "    )%n" +
+                        "  }%n" +
+                        "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
 
         WorkflowRun build = testJenkins.buildAndAssertSuccess(job);
         List<String> artifactNames = build.getArtifacts().stream().map(Run.Artifact::getFileName).collect(Collectors.toList());
@@ -89,18 +89,40 @@ class SignApksStepTest {
     }
 
     @Test
-    void setsAndroidHomeFromEnvVarsIfNotSpecifiedInScript() throws Exception {
+    void dslWorksForAab() throws Exception {
         WorkflowJob job = testJenkins.jenkins.createProject(WorkflowJob.class, getClass().getSimpleName());
         job.setDefinition(new CpsFlowDefinition(String.format(
-            "node('%s') {%n" +
-            "  wrap($class: 'CopyTestWorkspace') {%n" +
-            "    signAndroidApks(" +
-            "      keyStoreId: '%s',%n" +
-            "      keyAlias: '%s',%n" +
-            "      apksToSign: '*-unsigned.apk, **/*-release-unsigned.apk'%n" +
-            "    )%n" +
-            "  }%n" +
-            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
+                "node('%s') {%n" +
+                        "  wrap($class: 'CopyTestWorkspace') {%n" +
+                        "    signAndroidApks(" +
+                        "      keyStoreId: '%s',%n" +
+                        "      keyAlias: '%s',%n" +
+                        "      aabsToSign: '*-unsigned.aab',%n" +
+                        "      archiveSignedApks: true%n" +
+                        "    )%n" +
+                        "  }%n" +
+                        "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
+
+        WorkflowRun build = testJenkins.buildAndAssertSuccess(job);
+        List<String> artifactNames = build.getArtifacts().stream().map(Run.Artifact::getFileName).collect(Collectors.toList());
+
+        assertThat(artifactNames.size(), equalTo(1));
+        assertThat(artifactNames, hasItem(endsWith("SignApksBuilderTest.aab")));
+    }
+
+    @Test
+    void setsAndroidHomeFromEnvVarsIfNotSpecifiedInScript() throws Exception {
+        WorkflowJob job = testJenkins.getInstance().createProject(WorkflowJob.class, getClass().getSimpleName());
+        job.setDefinition(new CpsFlowDefinition(String.format(
+                "node('%s') {%n" +
+                        "  wrap($class: 'CopyTestWorkspace') {%n" +
+                        "    signAndroidApks(" +
+                        "      keyStoreId: '%s',%n" +
+                        "      keyAlias: '%s',%n" +
+                        "      apksToSign: '*-unsigned.apk, **/*-release-unsigned.apk'%n" +
+                        "    )%n" +
+                        "  }%n" +
+                        "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
 
         WorkflowRun build = testJenkins.buildAndAssertSuccess(job);
         List<String> artifactNames = build.getArtifacts().stream().map(Run.Artifact::getFileName).collect(Collectors.toList());
@@ -119,17 +141,17 @@ class SignApksStepTest {
         EnvVars envVars = prop.getEnvVars();
         envVars.put("ANDROID_ZIPALIGN", altZipalign);
 
-        WorkflowJob job = testJenkins.jenkins.createProject(WorkflowJob.class, getClass().getSimpleName());
+        WorkflowJob job = testJenkins.getInstance().createProject(WorkflowJob.class, getClass().getSimpleName());
         job.setDefinition(new CpsFlowDefinition(String.format(
-            "node('%s') {%n" +
-            "  wrap($class: 'CopyTestWorkspace') {%n" +
-            "    signAndroidApks(" +
-            "      keyStoreId: '%s',%n" +
-            "      keyAlias: '%s',%n" +
-            "      apksToSign: '**/*-unsigned.apk'%n" +
-            "    )%n" +
-            "  }%n" +
-            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
+                "node('%s') {%n" +
+                        "  wrap($class: 'CopyTestWorkspace') {%n" +
+                        "    signAndroidApks(" +
+                        "      keyStoreId: '%s',%n" +
+                        "      keyAlias: '%s',%n" +
+                        "      apksToSign: '**/*-unsigned.apk'%n" +
+                        "    )%n" +
+                        "  }%n" +
+                        "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
 
         WorkflowRun build = testJenkins.buildAndAssertSuccess(job);
         List<String> artifactNames = build.getArtifacts().stream().map(Run.Artifact::getFileName).collect(Collectors.toList());
@@ -149,20 +171,20 @@ class SignApksStepTest {
         EnvironmentVariablesNodeProperty prop = new EnvironmentVariablesNodeProperty();
         EnvVars envVars = prop.getEnvVars();
         envVars.put("ANDROID_ZIPALIGN", "/fail/zipalign");
-        testJenkins.jenkins.getGlobalNodeProperties().add(prop);
+        testJenkins.getInstance().getGlobalNodeProperties().add(prop);
 
-        WorkflowJob job = testJenkins.jenkins.createProject(WorkflowJob.class, getClass().getSimpleName());
+        WorkflowJob job = testJenkins.getInstance().createProject(WorkflowJob.class, getClass().getSimpleName());
         job.setDefinition(new CpsFlowDefinition(String.format(
-            "node('%s') {%n" +
-            "  wrap($class: 'CopyTestWorkspace') {%n" +
-            "    signAndroidApks(" +
-            "      keyStoreId: '%s',%n" +
-            "      keyAlias: '%s',%n" +
-            "      apksToSign: '**/*-unsigned.apk',%n" +
-            "      androidHome: '%s'%n" +
-            "    )%n" +
-            "  }%n" +
-            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS, altAndroidHome.replace("\\", "\\\\")), false));
+                "node('%s') {%n" +
+                        "  wrap($class: 'CopyTestWorkspace') {%n" +
+                        "    signAndroidApks(" +
+                        "      keyStoreId: '%s',%n" +
+                        "      keyAlias: '%s',%n" +
+                        "      apksToSign: '**/*-unsigned.apk',%n" +
+                        "      androidHome: '%s'%n" +
+                        "    )%n" +
+                        "  }%n" +
+                        "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS, altAndroidHome.replace("\\", "\\\\")), false));
 
         testJenkins.buildAndAssertSuccess(job);
 
@@ -172,16 +194,16 @@ class SignApksStepTest {
         String altZipalign = new File(altZipalignUrl.toURI()).getAbsolutePath();
 
         job.setDefinition(new CpsFlowDefinition(String.format(
-            "node('%s') {%n" +
-            "  wrap($class: 'CopyTestWorkspace') {%n" +
-            "    signAndroidApks(" +
-            "      keyStoreId: '%s',%n" +
-            "      keyAlias: '%s',%n" +
-            "      apksToSign: '**/*-unsigned.apk',%n" +
-            "      zipalignPath: '%s'%n" +
-            "    )%n" +
-            "  }%n" +
-            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS, altZipalign.replace("\\", "\\\\")), false));
+                "node('%s') {%n" +
+                        "  wrap($class: 'CopyTestWorkspace') {%n" +
+                        "    signAndroidApks(" +
+                        "      keyStoreId: '%s',%n" +
+                        "      keyAlias: '%s',%n" +
+                        "      apksToSign: '**/*-unsigned.apk',%n" +
+                        "      zipalignPath: '%s'%n" +
+                        "    )%n" +
+                        "  }%n" +
+                        "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS, altZipalign.replace("\\", "\\\\")), false));
 
         testJenkins.buildAndAssertSuccess(job);
 
@@ -192,16 +214,16 @@ class SignApksStepTest {
     void skipsZipalign() throws Exception {
         WorkflowJob job = testJenkins.jenkins.createProject(WorkflowJob.class, getClass().getSimpleName());
         job.setDefinition(new CpsFlowDefinition(String.format(
-            "node('%s') {%n" +
-                "  wrap($class: 'CopyTestWorkspace') {%n" +
-                "    signAndroidApks(" +
-                "      keyStoreId: '%s',%n" +
-                "      keyAlias: '%s',%n" +
-                "      apksToSign: '**/*-unsigned.apk',%n" +
-                "      skipZipalign: true%n" +
-                "    )%n" +
-                "  }%n" +
-                "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
+                "node('%s') {%n" +
+                        "  wrap($class: 'CopyTestWorkspace') {%n" +
+                        "    signAndroidApks(" +
+                        "      keyStoreId: '%s',%n" +
+                        "      keyAlias: '%s',%n" +
+                        "      apksToSign: '**/*-unsigned.apk',%n" +
+                        "      skipZipalign: true%n" +
+                        "    )%n" +
+                        "  }%n" +
+                        "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
 
         testJenkins.buildAndAssertSuccess(job);
 
@@ -212,17 +234,17 @@ class SignApksStepTest {
     void signedApkMappingDefaultsToUnsignedApkSibling() throws Exception {
         WorkflowJob job = testJenkins.jenkins.createProject(WorkflowJob.class, getClass().getSimpleName());
         job.setDefinition(new CpsFlowDefinition(String.format(
-            "node('%s') {%n" +
-            "  wrap($class: 'CopyTestWorkspace') {%n" +
-            "    signAndroidApks(" +
-            "      keyStoreId: '%s',%n" +
-            "      keyAlias: '%s',%n" +
-            "      apksToSign: 'SignApksBuilderTest-unsigned.apk',%n" +
-            "      archiveSignedApks: false%n" +
-            "    )%n" +
-            "    archive includes: 'SignApksBuilderTest.apk'%n" +
-            "  }%n" +
-            "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
+                "node('%s') {%n" +
+                        "  wrap($class: 'CopyTestWorkspace') {%n" +
+                        "    signAndroidApks(" +
+                        "      keyStoreId: '%s',%n" +
+                        "      keyAlias: '%s',%n" +
+                        "      apksToSign: 'SignApksBuilderTest-unsigned.apk',%n" +
+                        "      archiveSignedApks: false%n" +
+                        "    )%n" +
+                        "    archive includes: 'SignApksBuilderTest.apk'%n" +
+                        "  }%n" +
+                        "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
 
         WorkflowRun run = testJenkins.buildAndAssertSuccess(job);
         List<WorkflowRun.Artifact> artifacts = run.getArtifacts();
@@ -235,18 +257,18 @@ class SignApksStepTest {
     void usesSpecifiedSignedApkMapping() throws Exception {
         WorkflowJob job = testJenkins.jenkins.createProject(WorkflowJob.class, getClass().getSimpleName());
         job.setDefinition(new CpsFlowDefinition(String.format(
-            "node('%s') {%n" +
-                "  wrap($class: 'CopyTestWorkspace') {%n" +
-                "    signAndroidApks(" +
-                "      keyStoreId: '%s',%n" +
-                "      keyAlias: '%s',%n" +
-                "      apksToSign: 'SignApksBuilderTest-unsigned.apk',%n" +
-                "      archiveSignedApks: false,%n" +
-                "      signedApkMapping: [$class: 'TestSignedApkMapping']%n" +
-                "    )%n" +
-                "    archive includes: 'TestSignedApkMapping-SignApksBuilderTest-unsigned.apk'%n" +
-                "  }%n" +
-                "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
+                "node('%s') {%n" +
+                        "  wrap($class: 'CopyTestWorkspace') {%n" +
+                        "    signAndroidApks(" +
+                        "      keyStoreId: '%s',%n" +
+                        "      keyAlias: '%s',%n" +
+                        "      apksToSign: 'SignApksBuilderTest-unsigned.apk',%n" +
+                        "      archiveSignedApks: false,%n" +
+                        "      signedApkMapping: [$class: 'TestSignedApkMapping']%n" +
+                        "    )%n" +
+                        "    archive includes: 'TestSignedApkMapping-SignApksBuilderTest-unsigned.apk'%n" +
+                        "  }%n" +
+                        "}", getClass().getSimpleName(), TestKeyStore.KEY_STORE_ID, TestKeyStore.KEY_ALIAS), false));
 
         WorkflowRun run = testJenkins.buildAndAssertSuccess(job);
         List<WorkflowRun.Artifact> artifacts = run.getArtifacts();

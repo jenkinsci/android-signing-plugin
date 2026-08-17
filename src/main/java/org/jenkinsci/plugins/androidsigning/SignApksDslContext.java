@@ -26,6 +26,10 @@ public class SignApksDslContext extends ContextExtensionPoint {
             builder.setKeyAlias(x);
         }
 
+        public void aabsToSign(String aabsToSign) {
+            builder.setAabsToSign(aabsToSign);
+        }
+
         public void signedApkMapping(SignedApkMappingStrategy x) {
             builder.setSignedApkMapping(x);
         }
